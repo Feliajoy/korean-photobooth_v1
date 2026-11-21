@@ -1,52 +1,486 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;1,500;1,600&display=swap');
 
-:root{--ink:#292323;--muted:#8d7d7b;--paper:#fffdfb;--rose:#e9b9b7;--line:#eee4e1;--bg:#f8f1ef}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif}
-.topbar{height:76px;padding:0 6vw;display:flex;align-items:center;justify-content:space-between;background:#fffdfb;border-bottom:1px solid #f0e7e4}
-.brand{display:flex;align-items:center;gap:11px;text-decoration:none;color:var(--ink);font-weight:700;letter-spacing:3px;font-size:14px}
-.brand-mark{display:grid;place-items:center;width:34px;height:34px;border:1px solid #c99d9a;border-radius:50%;font-family:'Playfair Display',serif;font-size:20px;color:#b77d7a;letter-spacing:0}
-.brand small{display:block;font-size:7px;letter-spacing:2px;color:#a08e8b;margin-top:3px}
-.top-note{font-size:9px;letter-spacing:1.7px;color:#9b8986}.live-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#a6b99e;margin-right:8px}
-.app-shell{max-width:1320px;margin:auto;padding:55px 5vw 30px}
-.intro{text-align:center;margin-bottom:42px}.eyebrow{font-size:9px;letter-spacing:2.5px;font-weight:700;color:#b07e7b;margin:0 0 12px}
-h1{font-family:'Playfair Display',serif;font-size:clamp(38px,5vw,58px);font-weight:500;margin:0;letter-spacing:-1.5px}h1 em{color:#c38d89}
-.subheading{color:#978986;font-size:13px;max-width:510px;line-height:1.8;margin:12px auto 0}
-.workspace{display:grid;grid-template-columns:minmax(300px,390px) 1fr;gap:28px;align-items:start}
-.controls{display:grid;gap:14px}.panel{background:#fffdfb;border:1px solid #f0e6e3;border-radius:12px;padding:21px;box-shadow:0 5px 20px #6b45400a}
-.section-heading{display:flex;gap:12px;align-items:center;margin-bottom:18px}.step{font-family:'Playfair Display',serif;color:#c58e8a;font-size:22px}.section-heading h2{font-size:13px;margin:0 0 4px}.section-heading p{font-size:10px;color:#a39491;margin:0}
-.upload-button{height:42px;border:1px dashed #d9b7b4;border-radius:7px;display:flex;align-items:center;justify-content:center;gap:8px;color:#a87572;font-size:11px;font-weight:600;cursor:pointer;background:#fff9f7}.upload-button span{font-size:17px}
-.camera-row,.music-controls{display:flex;gap:8px;margin-top:9px}.button{border:0;border-radius:6px;padding:11px 14px;font-family:inherit;font-size:10px;font-weight:700;letter-spacing:.4px;cursor:pointer;transition:.2s}.button:hover:not(:disabled){transform:translateY(-1px);filter:brightness(.97)}.button:disabled{opacity:.4;cursor:not-allowed}.button-dark{background:#342d2c;color:white}.button-light{background:#f4eae8;color:#806a67}.button-accent{background:#c98e8a;color:white}
-.camera-row .button{flex:1}.camera-wrap{margin-top:12px;position:relative;background:#211e1d;border-radius:8px;overflow:hidden}.camera-wrap video{display:block;width:100%;max-height:220px;object-fit:cover}.camera-hint{font-size:9px;color:white;text-align:center;padding:8px}
-.photo-status{font-size:9px;color:#a18f8c;margin:13px 0 8px}.thumb-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}.thumb{aspect-ratio:1;background:#f4eae8;border-radius:4px;overflow:hidden;position:relative}.thumb img{width:100%;height:100%;object-fit:cover}.thumb span{position:absolute;right:2px;top:2px;background:#292323b8;color:white;border-radius:50%;font-size:9px;width:15px;height:15px;text-align:center;line-height:15px}
-.choice-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.choice{border:1px solid #eee3e0;background:#fff;border-radius:7px;padding:10px 4px 8px;display:flex;align-items:center;flex-direction:column;gap:5px;cursor:pointer;color:#554947}.choice.active{border-color:#c58e8a;background:#fff7f5;box-shadow:0 0 0 1px #c58e8a inset}.choice b{font-size:9px;letter-spacing:.6px}.choice small{font-size:8px;color:#a79794}
-.mini-strip{height:45px;width:23px;padding:3px;background:#ead2d0;display:flex;flex-direction:column;gap:2px}.mini-strip i{display:block;flex:1;background:#fffaf8}.mini-strip.two{height:29px}.mini-strip.three{height:38px}.mini-strip.six{height:53px}
-.field-label{display:block;font-size:9px;font-weight:700;color:#8d7976;margin:14px 0 6px;letter-spacing:.5px}.select,.text-input,.file-input{width:100%;height:38px;border:1px solid #eee3e0;border-radius:6px;background:#fff;color:#594d4b;padding:0 10px;font-family:inherit;font-size:10px;outline:none}.text-input:focus,.select:focus{border-color:#c58e8a}.file-input{padding:9px;height:auto;font-size:9px}.music-controls .button{flex:1}.music-note{font-size:9px;color:#a18f8c;line-height:1.6;margin:9px 0 0}
-.preview-area{background:#fffdfb;border:1px solid #f0e6e3;border-radius:12px;padding:25px;min-height:700px;box-shadow:0 5px 20px #6b45400a}.preview-header{display:flex;align-items:center;justify-content:space-between}.preview-header .eyebrow{margin-bottom:5px;font-size:8px}.preview-header h2{font-family:'Playfair Display',serif;font-size:24px;font-weight:500;margin:0}.preview-tag{font-size:8px;letter-spacing:1px;color:#ad8884;border:1px solid #ead7d4;padding:7px 9px;border-radius:20px}
-.stage{min-height:510px;margin-top:20px;background-color:#f7f0ed;background-image:radial-gradient(#e8d9d5 0.7px,transparent .7px);background-size:13px 13px;border-radius:9px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:25px 15px 18px;overflow:hidden}
-.strip{width:230px;background:#f1d9d7;padding:12px 12px 11px;box-shadow:0 12px 35px #6e514033;display:flex;flex-direction:column;align-items:stretch;gap:8px;transition:.2s}
-.strip-photos{display:flex;flex-direction:column;gap:7px}.photo-slot{width:100%;aspect-ratio:1.16;background:#e7c9c6;overflow:hidden;position:relative;display:grid;place-items:center;color:#aa8581}.photo-slot img{width:100%;height:100%;object-fit:cover;display:block}.photo-slot .placeholder{font-family:'Playfair Display',serif;font-size:11px;letter-spacing:1px;text-align:center}.strip-caption{text-align:center;font-family:'Playfair Display',serif;font-style:italic;font-size:14px;color:#654e4b;min-height:17px;overflow-wrap:anywhere}.strip-date{text-align:center;font-size:8px;letter-spacing:1.5px;color:#846c69}.strip-brand{text-align:center;font-size:6px;letter-spacing:2px;color:#967b78;margin-top:1px}.strip-song{text-align:center;font-size:7px;letter-spacing:.6px;color:#967b78;line-height:1.4;overflow-wrap:anywhere;margin-top:1px}.strip-song[hidden]{display:none}
-.stage-tip{font-size:9px;color:#a08f8c;margin:20px 0 0}
-.strip.theme-cream{background:#e9dfcc}.strip.theme-cream .photo-slot{background:#d8cdb9}.strip.theme-cream .strip-caption{color:#5d5143}.strip.theme-black{background:#292727}.strip.theme-black .photo-slot{background:#494343}.strip.theme-black .strip-caption,.strip.theme-black .strip-date,.strip.theme-black .strip-brand,.strip.theme-black .strip-song{color:#f3e9e4}.strip.theme-lavender{background:#e4dced}.strip.theme-lavender .photo-slot{background:#d0c1dc}.strip.theme-lavender .strip-caption,.strip.theme-lavender .strip-song{color:#665475}.strip.theme-mint{background:#dce9df}.strip.theme-mint .photo-slot{background:#c5d9ca}.strip.theme-mint .strip-caption,.strip.theme-mint .strip-song{color:#526e5b}
-.export-panel{display:flex;justify-content:space-between;align-items:center;gap:18px;margin-top:20px;padding-top:18px;border-top:1px solid #f0e6e3;flex-wrap:wrap}.export-panel h3{font-size:12px;margin:0 0 5px}.export-panel p{font-size:9px;color:#a08f8c;margin:0;line-height:1.5}.export-buttons{display:flex;gap:7px;flex-wrap:wrap}.export-hint{width:100%;margin-top:-6px!important}
-footer{text-align:center;color:#b5a4a1;font-size:8px;letter-spacing:2px;margin-top:35px}footer span{padding:0 8px;color:#d4b5b1}
-@media(max-width:850px){.workspace{grid-template-columns:1fr}.preview-area{min-height:0}.stage{min-height:450px}.app-shell{padding-top:35px}}
-@media(max-width:480px){.topbar{padding:0 18px}.top-note{font-size:7px;letter-spacing:1px}.app-shell{padding-left:14px;padding-right:14px}.panel,.preview-area{padding:16px}.preview-header h2{font-size:20px}.preview-tag{font-size:7px}.export-panel{align-items:flex-start;flex-direction:column}.export-buttons{width:100%}.export-buttons .button{flex:1}}
-@media print{body{background:white}.topbar,.intro,.controls,.preview-header,.stage-tip,.export-panel,footer{display:none!important}.app-shell{padding:0;margin:0}.workspace{display:block}.preview-area{border:0;padding:0;box-shadow:none;min-height:0}.stage{background:white!important;min-height:0;padding:0;border-radius:0}.strip{box-shadow:none!important;print-color-adjust:exact;-webkit-print-color-adjust:exact;margin:0 auto}.strip *{print-color-adjust:exact;-webkit-print-color-adjust:exact}}
+/* =========================================
+   KOREAN PHOTOBOOTH - FRAME STYLES
+   ========================================= */
 
+:root {
+  --bg: #f8f3ef;
+  --surface: #fffdfb;
+  --surface-soft: #f3eae4;
+  --text: #39302e;
+  --muted: #95847e;
+  --accent: #b98778;
+  --accent-dark: #986b60;
+  --border: #e9dcd4;
+  --shadow: 0 12px 35px rgba(80, 55, 45, 0.10);
+  --radius: 18px;
+}
 
-/* Photo-fit and preview overflow fix */
-.stage{min-height:0;overflow:visible;justify-content:flex-start;padding:24px 15px 18px}
-.strip{width:min(230px,100%);max-width:100%;flex:0 0 auto}
-.strip-photos{width:100%;min-width:0}
-.photo-slot{width:100%;min-width:0}
-.photo-slot img{width:100%;height:100%;object-fit:contain;object-position:center;display:block}
-.stage-tip{margin-top:16px}
-@media(max-width:480px){.stage{padding:18px 10px 14px}.strip{width:min(230px,100%)}}
+* {
+  box-sizing: border-box;
+}
 
+html {
+  scroll-behavior: smooth;
+}
 
-/* Per-frame photo replacement controls */
-.photo-slot{isolation:isolate}
-.photo-change-button{position:absolute;right:7px;bottom:7px;z-index:2;border:1px solid rgba(255,255,255,.75);border-radius:5px;background:rgba(41,35,35,.78);color:#fff;padding:6px 9px;font:600 8px 'DM Sans',sans-serif;letter-spacing:.2px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.16)}
-.photo-change-button:hover,.photo-change-button:focus-visible{background:#c98e8a;outline:2px solid #fff;outline-offset:1px}
-@media(max-width:480px){.photo-change-button{right:5px;bottom:5px;padding:7px 9px;font-size:9px}}
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Poppins", "Noto Sans KR", Arial, sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+/* =========================================
+   MAIN LAYOUT
+   ========================================= */
+
+.app-container,
+.container,
+main {
+  width: 100%;
+}
+
+.app-container {
+  max-width: 1250px;
+  margin: 0 auto;
+  padding: 30px 24px 50px;
+}
+
+.app-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.app-header h1 {
+  margin: 0 0 8px;
+  font-size: clamp(28px, 4vw, 42px);
+  letter-spacing: 2px;
+  font-weight: 700;
+}
+
+.app-header p {
+  color: var(--muted);
+  margin: 0;
+  font-size: 14px;
+}
+
+/* =========================================
+   MAIN CONTENT / COLUMNS
+   ========================================= */
+
+.main-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 420px);
+  gap: 30px;
+  align-items: start;
+}
+
+.controls-panel,
+.preview-panel,
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: var(--shadow);
+  min-width: 0;
+}
+
+.controls-panel h2,
+.preview-panel h2,
+.panel h2 {
+  margin-top: 0;
+  font-size: 19px;
+}
+
+/* =========================================
+   FORM ELEMENTS
+   ========================================= */
+
+.control-group {
+  margin-bottom: 22px;
+}
+
+.control-group label {
+  display: block;
+  margin-bottom: 9px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+input[type="text"],
+input[type="date"],
+input[type="file"],
+select,
+textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--text);
+  outline: none;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(185, 135, 120, 0.12);
+}
+
+input[type="file"] {
+  font-size: 12px;
+}
+
+/* =========================================
+   BUTTONS
+   ========================================= */
+
+button,
+.btn {
+  border: none;
+  border-radius: 10px;
+  padding: 11px 16px;
+  background: var(--accent);
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+button:hover,
+.btn:hover {
+  background: var(--accent-dark);
+  transform: translateY(-1px);
+}
+
+button:active,
+.btn:active {
+  transform: translateY(0);
+}
+
+.button-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.button-group button {
+  flex: 1;
+  min-width: 100px;
+}
+
+.secondary-button {
+  background: #e9dcd4;
+  color: var(--text);
+}
+
+.secondary-button:hover {
+  background: #ddc9be;
+}
+
+/* =========================================
+   CAMERA
+   ========================================= */
+
+.camera-wrap {
+  width: 100%;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #211c1b;
+  margin-bottom: 12px;
+}
+
+#camera {
+  display: block;
+  width: 100%;
+  max-height: 400px;
+  object-fit: cover;
+}
+
+#startCamera,
+#takePhoto {
+  margin: 4px 4px 12px 0;
+}
+
+/* =========================================
+   PHOTOBOOTH PREVIEW
+   ========================================= */
+
+.preview-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.preview-panel h2 {
+  width: 100%;
+}
+
+/* Fixed photostrip dimensions.
+   The strip itself should not resize to match uploaded photos. */
+
+.strip {
+  width: 100%;
+  max-width: 290px;
+  padding: 12px;
+  margin: 0 auto;
+  background: #fff;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  overflow: hidden;
+}
+
+/* =========================================
+   INDIVIDUAL PHOTO FRAMES
+   ========================================= */
+
+.photo-slot {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1.16;
+  overflow: hidden;
+  background: #eee5df;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Images fill the frame without stretching.
+   Users can later adjust zoom and position. */
+
+.photo-slot img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+/* Empty photo placeholder */
+
+.photo-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+  padding: 12px;
+}
+
+/* =========================================
+   CHANGE PHOTO BUTTON
+   ========================================= */
+
+.photo-change-button {
+  position: absolute;
+  z-index: 5;
+  bottom: 8px;
+  right: 8px;
+  padding: 7px 10px;
+  border-radius: 20px;
+  background: rgba(45, 36, 33, 0.78);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.photo-slot:hover .photo-change-button {
+  opacity: 1;
+}
+
+.photo-change-button:hover {
+  background: rgba(45, 36, 33, 0.95);
+}
+
+/* Keep button visible on touch devices */
+
+@media (hover: none) {
+  .photo-change-button {
+    opacity: 1;
+  }
+}
+
+/* =========================================
+   PHOTO STRIP TEXT
+   ========================================= */
+
+.strip-caption {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #51413c;
+  overflow-wrap: anywhere;
+  padding: 4px 2px 0;
+}
+
+.strip-date {
+  text-align: center;
+  font-size: 10px;
+  color: #95847e;
+  padding-bottom: 3px;
+}
+
+.strip-brand {
+  text-align: center;
+  font-size: 9px;
+  letter-spacing: 2px;
+  font-weight: 700;
+  color: #b18b7d;
+  padding: 5px 0 2px;
+}
+
+/* Selected song credit */
+
+.strip-song {
+  text-align: center;
+  font-size: 9px;
+  color: #95847e;
+  padding: 2px 4px 5px;
+  overflow-wrap: anywhere;
+}
+
+/* =========================================
+   THUMBNAILS
+   ========================================= */
+
+.thumb,
+.thumbnail {
+  width: 65px;
+  height: 65px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.thumb img,
+.thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* =========================================
+   MUSIC CONTROLS
+   ========================================= */
+
+.music-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.music-controls button {
+  flex: 1;
+}
+
+.music-status {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+}
+
+/* =========================================
+   DOWNLOAD BUTTONS
+   ========================================= */
+
+.download-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  width: 100%;
+  margin-top: 20px;
+}
+
+.download-buttons button {
+  width: 100%;
+}
+
+#savePdf {
+  grid-column: 1 / -1;
+}
+
+/* =========================================
+   FOOTER
+   ========================================= */
+
+.app-footer {
+  text-align: center;
+  color: var(--muted);
+  font-size: 11px;
+  padding: 28px 12px;
+}
+
+/* =========================================
+   RESPONSIVE DESIGN
+   ========================================= */
+
+@media (max-width: 850px) {
+  .main-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .preview-panel {
+    order: -1;
+  }
+
+  .strip {
+    max-width: 270px;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-container {
+    padding: 18px 12px 35px;
+  }
+
+  .controls-panel,
+  .preview-panel,
+  .panel {
+    padding: 16px;
+  }
+
+  .strip {
+    max-width: 250px;
+  }
+
+  .button-group button {
+    min-width: 90px;
+  }
+
+  .download-buttons {
+    grid-template-columns: 1fr;
+  }
+
+  #savePdf {
+    grid-column: auto;
+  }
+}
