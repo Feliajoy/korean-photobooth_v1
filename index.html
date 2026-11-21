@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f7e9e8">
+  <title>FRAME — Korean Photobooth</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#"><span class="brand-mark">F</span><span>FRAME<small>YOUR LITTLE MOMENT</small></span></a>
+    <div class="top-note"><span class="live-dot"></span> YOUR PERSONAL PHOTO STUDIO</div>
+  </header>
+
+  <main class="app-shell">
+    <section class="intro">
+      <p class="eyebrow">A LITTLE MOMENT, FOREVER</p>
+      <h1>Make it a <em>memory.</em></h1>
+      <p class="subheading">Create your own Korean-inspired photo strip. Pick your frames, add a song, and keep the moment.</p>
+    </section>
+
+    <div class="workspace">
+      <aside class="controls">
+        <section class="panel">
+          <div class="section-heading"><span class="step">01</span><div><h2>Add your photos</h2><p>Upload pictures or use your camera.</p></div></div>
+          <label class="upload-button" for="photoUpload"><span>＋</span> Choose photos</label>
+          <input id="photoUpload" type="file" accept="image/*" multiple hidden>
+          <div class="camera-row">
+            <button class="button button-dark" id="startCamera">◎ Open camera</button>
+            <button class="button button-light" id="takePhoto" disabled>Capture</button>
+          </div>
+          <div class="camera-wrap" id="cameraWrap" hidden>
+            <video id="camera" autoplay playsinline muted></video>
+            <div class="camera-hint">Position yourself and press Capture</div>
+          </div>
+          <div class="photo-status" id="photoStatus">0 photos added · Add up to 6 photos</div>
+          <div class="thumb-grid" id="thumbGrid"></div>
+        </section>
+
+        <section class="panel">
+          <div class="section-heading"><span class="step">02</span><div><h2>Choose your strip</h2><p>Pick a layout for your story.</p></div></div>
+          <div class="choice-grid layout-choices">
+            <button class="choice active" data-layout="4"><span class="mini-strip four"><i></i><i></i><i></i><i></i></span><b>4 CUT</b><small>Classic</small></button>
+            <button class="choice" data-layout="2"><span class="mini-strip two"><i></i><i></i></span><b>2 CUT</b><small>Simple</small></button>
+            <button class="choice" data-layout="3"><span class="mini-strip three"><i></i><i></i><i></i></span><b>3 CUT</b><small>Moments</small></button>
+            <button class="choice" data-layout="6"><span class="mini-strip six"><i></i><i></i><i></i><i></i><i></i><i></i></span><b>6 CUT</b><small>Story</small></button>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="section-heading"><span class="step">03</span><div><h2>Style your strip</h2><p>Make it feel like you.</p></div></div>
+          <label class="field-label" for="themeSelect">Frame theme</label>
+          <select id="themeSelect" class="select">
+            <option value="pink">Seoul Blush</option>
+            <option value="cream">Milk Tea</option>
+            <option value="black">Midnight</option>
+            <option value="lavender">Lavender Dream</option>
+            <option value="mint">Soft Mint</option>
+          </select>
+          <label class="field-label" for="captionInput">Your caption</label>
+          <input id="captionInput" class="text-input" maxlength="32" value="a day to remember" placeholder="Write a little note">
+          <label class="field-label" for="dateInput">Date on your strip</label>
+          <input id="dateInput" class="text-input" type="text" maxlength="24">
+        </section>
+
+        <section class="panel">
+          <div class="section-heading"><span class="step">04</span><div><h2>Set the mood</h2><p>Add a soundtrack to your session.</p></div></div>
+          <label class="field-label" for="songUpload">Choose an audio file</label>
+          <input id="songUpload" class="file-input" type="file" accept="audio/*">
+          <div class="music-controls">
+            <button class="button button-light" id="playMusic" disabled>▶ Play</button>
+            <button class="button button-light" id="stopMusic" disabled>■ Stop</button>
+          </div>
+          <p class="music-note" id="musicStatus">Add an MP3, WAV, or other audio file from your device.</p>
+          <audio id="audioPlayer" loop></audio>
+        </section>
+      </aside>
+
+      <section class="preview-area">
+        <div class="preview-header"><div><p class="eyebrow">LIVE PREVIEW</p><h2>Your photobooth strip</h2></div><span class="preview-tag">✦ MADE BY YOU</span></div>
+        <div class="stage">
+          <div class="strip" id="strip">
+            <div class="strip-photos" id="stripPhotos"></div>
+            <div class="strip-caption" id="stripCaption">a day to remember</div>
+            <div class="strip-date" id="stripDate"></div>
+            <div class="strip-brand">FRAME PHOTO STUDIO</div>
+          </div>
+          <p class="stage-tip">Your finished strip will appear here</p>
+        </div>
+        <div class="export-panel">
+          <div><h3>Ready to keep this moment?</h3><p>Download a high-quality copy of your creation.</p></div>
+          <div class="export-buttons">
+            <button class="button button-dark" id="savePng">↓ PNG</button>
+            <button class="button button-dark" id="saveJpg">↓ JPEG</button>
+            <button class="button button-accent" id="savePdf">▤ Export PDF</button>
+          </div>
+          <p class="export-hint" id="exportHint">Add at least one photo to enable exporting. Empty frames will remain as placeholders.</p>
+        </div>
+      </section>
+    </div>
+    <footer>FRAME PHOTO STUDIO <span>·</span> KEEP THE LITTLE THINGS</footer>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
