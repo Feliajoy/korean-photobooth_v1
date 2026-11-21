@@ -1,292 +1,23 @@
 
 /* =========================================
-   KOREAN PHOTOBOOTH - FRAME STYLES
-   ========================================= */
-
-:root {
-  --bg: #f8f3ef;
-  --surface: #fffdfb;
-  --surface-soft: #f3eae4;
-  --text: #39302e;
-  --muted: #95847e;
-  --accent: #b98778;
-  --accent-dark: #986b60;
-  --border: #e9dcd4;
-  --shadow: 0 12px 35px rgba(80, 55, 45, 0.10);
-  --radius: 18px;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-html {
-  scroll-behavior: smooth;
-}
-
-body {
-  margin: 0;
-  min-height: 100vh;
-  background: var(--bg);
-  color: var(--text);
-  font-family: "Poppins", "Noto Sans KR", Arial, sans-serif;
-}
-
-button,
-input,
-select,
-textarea {
-  font: inherit;
-}
-
-button {
-  cursor: pointer;
-}
-
-/* =========================================
-   MAIN LAYOUT
-   ========================================= */
-
-.app-container,
-.container,
-main {
-  width: 100%;
-}
-
-.app-container {
-  max-width: 1250px;
-  margin: 0 auto;
-  padding: 30px 24px 50px;
-}
-
-.app-header {
-  text-align: center;
-  margin-bottom: 32px;
-}
-
-.app-header h1 {
-  margin: 0 0 8px;
-  font-size: clamp(28px, 4vw, 42px);
-  letter-spacing: 2px;
-  font-weight: 700;
-}
-
-.app-header p {
-  color: var(--muted);
-  margin: 0;
-  font-size: 14px;
-}
-
-/* =========================================
-   MAIN CONTENT / COLUMNS
-   ========================================= */
-
-.main-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 420px);
-  gap: 30px;
-  align-items: start;
-}
-
-.controls-panel,
-.preview-panel,
-.panel {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 24px;
-  box-shadow: var(--shadow);
-  min-width: 0;
-}
-
-.controls-panel h2,
-.preview-panel h2,
-.panel h2 {
-  margin-top: 0;
-  font-size: 19px;
-}
-
-/* =========================================
-   FORM ELEMENTS
-   ========================================= */
-
-.control-group {
-  margin-bottom: 22px;
-}
-
-.control-group label {
-  display: block;
-  margin-bottom: 9px;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-input[type="text"],
-input[type="date"],
-input[type="file"],
-select,
-textarea {
-  width: 100%;
-  padding: 12px 14px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: #fff;
-  color: var(--text);
-  outline: none;
-}
-
-input:focus,
-select:focus,
-textarea:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(185, 135, 120, 0.12);
-}
-
-input[type="file"] {
-  font-size: 12px;
-}
-
-/* =========================================
-   BUTTONS
-   ========================================= */
-
-button,
-.btn {
-  border: none;
-  border-radius: 10px;
-  padding: 11px 16px;
-  background: var(--accent);
-  color: white;
-  font-size: 13px;
-  font-weight: 600;
-  transition: background 0.2s ease, transform 0.2s ease;
-}
-
-button:hover,
-.btn:hover {
-  background: var(--accent-dark);
-  transform: translateY(-1px);
-}
-
-button:active,
-.btn:active {
-  transform: translateY(0);
-}
-
-.button-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.button-group button {
-  flex: 1;
-  min-width: 100px;
-}
-
-.secondary-button {
-  background: #e9dcd4;
-  color: var(--text);
-}
-
-.secondary-button:hover {
-  background: #ddc9be;
-}
-
-/* =========================================
-   CAMERA
-   ========================================= */
-
-.camera-wrap {
-  width: 100%;
-  overflow: hidden;
-  border-radius: 14px;
-  background: #211c1b;
-  margin-bottom: 12px;
-}
-
-#camera {
-  display: block;
-  width: 100%;
-  max-height: 400px;
-  object-fit: cover;
-}
-
-#startCamera,
-#takePhoto {
-  margin: 4px 4px 12px 0;
-}
-
-/* =========================================
-   PHOTOBOOTH PREVIEW
-   ========================================= */
-
-.preview-panel {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.preview-panel h2 {
-  width: 100%;
-}
-
-/* Fixed photostrip dimensions.
-   The strip itself should not resize to match uploaded photos. */
-
-.strip {
-  width: 100%;
-  max-width: 290px;
-  padding: 12px;
-  margin: 0 auto;
-  background: #fff;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-  overflow: hidden;
-}
-
-/* =========================================
-   INDIVIDUAL PHOTO FRAMES
+   PHOTO FRAME - FIXED SIZE AND COVER
    ========================================= */
 
 .photo-slot {
-  position: relative;
   width: 100%;
   aspect-ratio: 1.16;
+  position: relative;
   overflow: hidden;
-  background: #eee5df;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
 }
 
-/* Images fill the frame without stretching.
-   Users can later adjust zoom and position. */
-
 .photo-slot img {
-  position: absolute;
-  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
   object-position: center;
   display: block;
-}
-
-/* Empty photo placeholder */
-
-.photo-placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--muted);
-  font-size: 12px;
-  text-align: center;
-  padding: 12px;
 }
 
 /* =========================================
@@ -296,17 +27,19 @@ button:active,
 .photo-change-button {
   position: absolute;
   z-index: 5;
-  bottom: 8px;
-  right: 8px;
+  right: 7px;
+  bottom: 7px;
   padding: 7px 10px;
+  border: 1px solid rgba(255,255,255,.5);
   border-radius: 20px;
-  background: rgba(45, 36, 33, 0.78);
-  color: #fff;
-  font-size: 10px;
+  background: rgba(45, 35, 35, .78);
+  color: white;
+  font-family: inherit;
+  font-size: 9px;
   font-weight: 600;
-  border: 1px solid rgba(255, 255, 255, 0.35);
+  cursor: pointer;
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity .2s ease;
 }
 
 .photo-slot:hover .photo-change-button {
@@ -314,10 +47,8 @@ button:active,
 }
 
 .photo-change-button:hover {
-  background: rgba(45, 36, 33, 0.95);
+  background: rgba(45, 35, 35, .95);
 }
-
-/* Keep button visible on touch devices */
 
 @media (hover: none) {
   .photo-change-button {
@@ -325,162 +56,18 @@ button:active,
   }
 }
 
-/* =========================================
-   PHOTO STRIP TEXT
-   ========================================= */
-
-.strip-caption {
-  text-align: center;
-  font-size: 13px;
-  font-weight: 600;
-  color: #51413c;
-  overflow-wrap: anywhere;
-  padding: 4px 2px 0;
-}
-
-.strip-date {
-  text-align: center;
-  font-size: 10px;
-  color: #95847e;
-  padding-bottom: 3px;
-}
-
-.strip-brand {
-  text-align: center;
-  font-size: 9px;
-  letter-spacing: 2px;
-  font-weight: 700;
-  color: #b18b7d;
-  padding: 5px 0 2px;
-}
-
-/* Selected song credit */
+/* Keep song credit styled like the original strip */
 
 .strip-song {
   text-align: center;
-  font-size: 9px;
-  color: #95847e;
-  padding: 2px 4px 5px;
+  font-size: 7px;
+  letter-spacing: .6px;
+  color: #967b78;
+  line-height: 1.4;
   overflow-wrap: anywhere;
+  margin-top: 1px;
 }
 
-/* =========================================
-   THUMBNAILS
-   ========================================= */
-
-.thumb,
-.thumbnail {
-  width: 65px;
-  height: 65px;
-  position: relative;
-  overflow: hidden;
-  border-radius: 8px;
-  background: var(--surface-soft);
-}
-
-.thumb img,
-.thumbnail img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-/* =========================================
-   MUSIC CONTROLS
-   ========================================= */
-
-.music-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 12px;
-}
-
-.music-controls button {
-  flex: 1;
-}
-
-.music-status {
-  color: var(--muted);
-  font-size: 12px;
-  margin-top: 8px;
-  overflow-wrap: anywhere;
-}
-
-/* =========================================
-   DOWNLOAD BUTTONS
-   ========================================= */
-
-.download-buttons {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-  width: 100%;
-  margin-top: 20px;
-}
-
-.download-buttons button {
-  width: 100%;
-}
-
-#savePdf {
-  grid-column: 1 / -1;
-}
-
-/* =========================================
-   FOOTER
-   ========================================= */
-
-.app-footer {
-  text-align: center;
-  color: var(--muted);
-  font-size: 11px;
-  padding: 28px 12px;
-}
-
-/* =========================================
-   RESPONSIVE DESIGN
-   ========================================= */
-
-@media (max-width: 850px) {
-  .main-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .preview-panel {
-    order: -1;
-  }
-
-  .strip {
-    max-width: 270px;
-  }
-}
-
-@media (max-width: 480px) {
-  .app-container {
-    padding: 18px 12px 35px;
-  }
-
-  .controls-panel,
-  .preview-panel,
-  .panel {
-    padding: 16px;
-  }
-
-  .strip {
-    max-width: 250px;
-  }
-
-  .button-group button {
-    min-width: 90px;
-  }
-
-  .download-buttons {
-    grid-template-columns: 1fr;
-  }
-
-  #savePdf {
-    grid-column: auto;
-  }
+.strip-song[hidden] {
+  display: none;
 }
