@@ -1,15 +1,17 @@
 
 const MAX_PHOTOS = 6;
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 3;
+const ZOOM_STEP = 0.2;
 
 const photoUpload = document.getElementById('photoUpload');
 const replacePhotoInput = document.getElementById('replacePhotoInput');
-
-let replacementIndex = null;
 
 const thumbGrid = document.getElementById('thumbGrid');
 const photoStatus = document.getElementById('photoStatus');
 const stripPhotos = document.getElementById('stripPhotos');
 const strip = document.getElementById('strip');
+
 const camera = document.getElementById('camera');
 const cameraWrap = document.getElementById('cameraWrap');
 const takePhotoBtn = document.getElementById('takePhoto');
@@ -21,6 +23,11 @@ let layoutCount = 4;
 let cameraStream = null;
 let audioUrl = null;
 let selectedSongName = '';
+let replacementIndex = null;
+
+// --------------------------------------------------
+// GENERAL HELPERS
+// --------------------------------------------------
 
 function formatSongTitle(fileName) {
   return fileName
@@ -32,13 +39,236 @@ function formatSongTitle(fileName) {
 function loadImage(src) {
   return new Promise((resolve, reject) => {
     const img = new Image();
+
     img.onload = () => resolve(img);
     img.onerror = reject;
     img.src = src;
   });
 }
 
+function readFileAsDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+
+    reader.readAsDataURL(file);
+  });
+}
+
+function createPhoto(src) {
+  return {
+    src,
+    zoom: 1,
+    offsetX: 0,
+    offsetY: 0
+  };
+}
+
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+// --------------------------------------------------
+// PHOTO CROP CALCULATIONS
+// --------------------------------------------------
+
+function getPhotoDimensions(photo, imageWidth, imageHeight, frameWidth, frameHeight) {
+  const baseScale = Math.max(
+    frameWidth / imageWidth,
+    frameHeight / imageHeight
+  );
+
+  const scale = baseScale * (photo.zoom || 1);
+
+  const drawWidth = imageWidth * scale;
+  const drawHeight = imageHeight * scale;
+
+  // Maximum distance the image can move without showing empty space.
+  const limitX = Math.max(0, (drawWidth - frameWidth) / 2);
+  const limitY = Math.max(0, (drawHeight - frameHeight) / 2);
+
+  photo.offsetX = clamp(photo.offsetX || 0, -limitX, limitX);
+  photo.offsetY = clamp(photo.offsetY || 0, -limitY, limitY);
+
+  const left =
+    (frameWidth - drawWidth) / 2 + photo.offsetX;
+
+  const top =
+    (frameHeight - drawHeight) / 2 + photo.offsetY;
+
+  return {
+    width: drawWidth,
+    height: drawHeight,
+    left,
+    top
+  };
+}
+
+// Update the photo displayed in the live preview.
+function updatePreviewImage(slot, img, photo) {
+  if (!slot || !img || !img.naturalWidth) return;
+
+  const frameWidth = slot.clientWidth;
+  const frameHeight = slot.clientHeight;
+
+  if (!frameWidth || !frameHeight) return;
+
+  const dimensions = getPhotoDimensions(
+    photo,
+    img.naturalWidth,
+    img.naturalHeight,
+    frameWidth,
+    frameHeight
+  );
+
+  img.style.position = 'absolute';
+  img.style.maxWidth = 'none';
+  img.style.width = `${dimensions.width}px`;
+  img.style.height = `${dimensions.height}px`;
+  img.style.left = `${dimensions.left}px`;
+  img.style.top = `${dimensions.top}px`;
+  img.style.objectFit = 'fill';
+}
+
+// --------------------------------------------------
+// ZOOM CONTROLS
+// --------------------------------------------------
+
+function changeZoom(index, amount) {
+  const photo = photos[index];
+
+  if (!photo) return;
+
+  photo.zoom = clamp(
+    photo.zoom + amount,
+    MIN_ZOOM,
+    MAX_ZOOM
+  );
+
+  updatePhotoSlot(index);
+}
+
+function resetCrop(index) {
+  const photo = photos[index];
+
+  if (!photo) return;
+
+  photo.zoom = 1;
+  photo.offsetX = 0;
+  photo.offsetY = 0;
+
+  updatePhotoSlot(index);
+}
+
+function updatePhotoSlot(index) {
+  const slot = stripPhotos.children[index];
+
+  if (!slot || !photos[index]) return;
+
+  const img = slot.querySelector('img');
+
+  if (img && img.complete) {
+    updatePreviewImage(slot, img, photos[index]);
+  }
+}
+
+// --------------------------------------------------
+// PHOTO DRAGGING
+// --------------------------------------------------
+
+function enablePhotoDragging(slot, img, photo) {
+  let dragging = false;
+  let lastX = 0;
+  let lastY = 0;
+
+  slot.addEventListener('pointerdown', event => {
+    if (event.target.closest('button')) return;
+    if (!img.naturalWidth) return;
+
+    dragging = true;
+    lastX = event.clientX;
+    lastY = event.clientY;
+
+    slot.setPointerCapture(event.pointerId);
+    event.preventDefault();
+  });
+
+  slot.addEventListener('pointermove', event => {
+    if (!dragging) return;
+
+    const deltaX = event.clientX - lastX;
+    const deltaY = event.clientY - lastY;
+
+    lastX = event.clientX;
+    lastY = event.clientY;
+
+    photo.offsetX += deltaX;
+    photo.offsetY += deltaY;
+
+    updatePreviewImage(slot, img, photo);
+    event.preventDefault();
+  });
+
+  function stopDragging() {
+    dragging = false;
+  }
+
+  slot.addEventListener('pointerup', stopDragging);
+  slot.addEventListener('pointercancel', stopDragging);
+  slot.addEventListener('lostpointercapture', stopDragging);
+}
+
+// --------------------------------------------------
+// CROP CONTROL BUTTONS
+// --------------------------------------------------
+
+function createCropControls(index) {
+  const controls = document.createElement('div');
+  controls.className = 'crop-toolbar';
+
+  const zoomOut = document.createElement('button');
+  zoomOut.type = 'button';
+  zoomOut.className = 'crop-control-button';
+  zoomOut.textContent = '−';
+  zoomOut.setAttribute('aria-label', 'Zoom out');
+
+  zoomOut.addEventListener('click', event => {
+    event.stopPropagation();
+    changeZoom(index, -ZOOM_STEP);
+  });
+
+  const zoomIn = document.createElement('button');
+  zoomIn.type = 'button';
+  zoomIn.className = 'crop-control-button';
+  zoomIn.textContent = '+';
+  zoomIn.setAttribute('aria-label', 'Zoom in');
+
+  zoomIn.addEventListener('click', event => {
+    event.stopPropagation();
+    changeZoom(index, ZOOM_STEP);
+  });
+
+  const reset = document.createElement('button');
+  reset.type = 'button';
+  reset.className = 'crop-control-button crop-reset-button';
+  reset.textContent = 'Reset';
+
+  reset.addEventListener('click', event => {
+    event.stopPropagation();
+    resetCrop(index);
+  });
+
+  controls.append(zoomOut, zoomIn, reset);
+
+  return controls;
+}
+
+// --------------------------------------------------
 // RENDER PHOTOSTRIP
+// --------------------------------------------------
+
 function render() {
   const slots = [];
 
@@ -47,20 +277,37 @@ function render() {
     slot.className = 'photo-slot';
 
     if (photos[i]) {
+      const photo = photos[i];
+
       const img = document.createElement('img');
-      img.src = photos[i].src;
+      img.src = photo.src;
       img.alt = `Photo ${i + 1}`;
+      img.draggable = false;
+
+      img.addEventListener('load', () => {
+        updatePreviewImage(slot, img, photo);
+      });
+
       slot.appendChild(img);
+
+      // Individual crop controls.
+      slot.appendChild(createCropControls(i));
+
+      // Drag to reposition.
+      enablePhotoDragging(slot, img, photo);
+
     } else {
       const placeholder = document.createElement('span');
       placeholder.className = 'placeholder';
       placeholder.textContent =
         `PHOTO ${String(i + 1).padStart(2, '0')}`;
+
       slot.appendChild(placeholder);
     }
 
-    // CHANGE PHOTO BUTTON
+    // CHANGE OR ADD INDIVIDUAL PHOTO
     const changeButton = document.createElement('button');
+
     changeButton.type = 'button';
     changeButton.className = 'photo-change-button';
     changeButton.textContent = photos[i]
@@ -84,16 +331,18 @@ function render() {
 
   stripPhotos.replaceChildren(...slots);
 
+  // FRAME THEME
   strip.className =
     `strip theme-${document.getElementById('themeSelect').value}`;
 
+  // CAPTION AND DATE
   document.getElementById('stripCaption').textContent =
     document.getElementById('captionInput').value || '';
 
   document.getElementById('stripDate').textContent =
     document.getElementById('dateInput').value || '';
 
-  // DISPLAY SELECTED SONG
+  // SELECTED SONG CREDIT
   const stripSong = document.getElementById('stripSong');
 
   stripSong.textContent = selectedSongName
@@ -120,15 +369,20 @@ function render() {
     thumbGrid.appendChild(thumb);
   });
 
+  // PHOTO STATUS
   photoStatus.textContent =
     `${photos.length} photo${photos.length === 1 ? '' : 's'} added · Add up to ${MAX_PHOTOS} photos`;
 
+  // EXPORT INFORMATION
   document.getElementById('exportHint').textContent = photos.length
     ? 'Empty frames will appear as placeholders. PNG and JPEG save directly; PDF opens your print dialog.'
     : 'Add at least one photo to enable exporting. Empty frames will remain as placeholders.';
 }
 
+// --------------------------------------------------
 // ADD MULTIPLE PHOTOS
+// --------------------------------------------------
+
 async function addFiles(files) {
   const imageFiles = [...files].filter(file =>
     file.type.startsWith('image/')
@@ -137,16 +391,13 @@ async function addFiles(files) {
   const room = MAX_PHOTOS - photos.length;
 
   for (const file of imageFiles.slice(0, room)) {
-    const src = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
-
-      reader.readAsDataURL(file);
-    });
-
-    photos.push({ src });
+    try {
+      const src = await readFileAsDataURL(file);
+      photos.push(createPhoto(src));
+    } catch (error) {
+      console.error('Could not read photo:', error);
+      alert(`Could not load ${file.name}.`);
+    }
   }
 
   if (imageFiles.length > room) {
@@ -156,41 +407,52 @@ async function addFiles(files) {
   render();
 }
 
-photoUpload.addEventListener('change', e => {
-  addFiles(e.target.files);
+photoUpload.addEventListener('change', event => {
+  addFiles(event.target.files);
+  photoUpload.value = '';
 });
 
+// --------------------------------------------------
 // REPLACE AN INDIVIDUAL PHOTO
-replacePhotoInput.addEventListener('change', async e => {
-  const file = e.target.files?.[0];
+// --------------------------------------------------
+
+replacePhotoInput.addEventListener('change', async event => {
+  const file = event.target.files?.[0];
 
   if (!file || replacementIndex === null) return;
 
   if (!file.type.startsWith('image/')) {
     alert('Please choose a valid image file.');
+    replacementIndex = null;
     return;
   }
 
-  const src = await new Promise((resolve, reject) => {
-    const reader = new FileReader();
+  try {
+    const src = await readFileAsDataURL(file);
 
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
+    // Replacing a photo resets its crop settings.
+    photos[replacementIndex] = createPhoto(src);
 
-    reader.readAsDataURL(file);
-  });
+    replacementIndex = null;
+    render();
 
-  photos[replacementIndex] = { src };
+  } catch (error) {
+    console.error('Could not replace photo:', error);
+    alert('The selected photo could not be loaded.');
+    replacementIndex = null;
+  }
 
-  replacementIndex = null;
-  render();
+  replacePhotoInput.value = '';
 });
 
+// --------------------------------------------------
 // CHANGE STRIP LAYOUT
+// --------------------------------------------------
+
 document.querySelectorAll('[data-layout]').forEach(button => {
   button.addEventListener('click', () => {
-    document.querySelectorAll('[data-layout]').forEach(b =>
-      b.classList.remove('active')
+    document.querySelectorAll('[data-layout]').forEach(item =>
+      item.classList.remove('active')
     );
 
     button.classList.add('active');
@@ -200,17 +462,24 @@ document.querySelectorAll('[data-layout]').forEach(button => {
   });
 });
 
+// --------------------------------------------------
 // THEME, CAPTION, AND DATE
+// --------------------------------------------------
+
 ['themeSelect', 'captionInput', 'dateInput'].forEach(id => {
   document.getElementById(id).addEventListener('input', render);
 });
 
-// OPEN AND CLOSE CAMERA
+// --------------------------------------------------
+// CAMERA: OPEN AND CLOSE
+// --------------------------------------------------
+
 startCameraBtn.addEventListener('click', async () => {
   if (cameraStream) {
     cameraStream.getTracks().forEach(track => track.stop());
 
     cameraStream = null;
+    camera.srcObject = null;
     cameraWrap.hidden = true;
     takePhotoBtn.disabled = true;
     startCameraBtn.textContent = '◎ Open camera';
@@ -230,18 +499,24 @@ startCameraBtn.addEventListener('click', async () => {
     startCameraBtn.textContent = '× Close camera';
 
   } catch (error) {
+    console.error('Camera error:', error);
+
     alert(
       'Camera access was not available. Please allow camera permission and use this page on localhost or HTTPS.'
     );
   }
 });
 
-// CAPTURE PHOTO
+// --------------------------------------------------
+// CAMERA: CAPTURE PHOTO
+// --------------------------------------------------
+
 takePhotoBtn.addEventListener('click', () => {
   if (!camera.videoWidth || photos.length >= MAX_PHOTOS) {
     if (photos.length >= MAX_PHOTOS) {
       alert(`You can add up to ${MAX_PHOTOS} photos.`);
     }
+
     return;
   }
 
@@ -252,22 +527,25 @@ takePhotoBtn.addEventListener('click', () => {
 
   const ctx = canvas.getContext('2d');
 
-  // Mirror webcam image
+  // Mirror webcam image.
   ctx.translate(canvas.width, 0);
   ctx.scale(-1, 1);
 
   ctx.drawImage(camera, 0, 0, canvas.width, canvas.height);
 
-  photos.push({
-    src: canvas.toDataURL('image/jpeg', 0.92)
-  });
+  photos.push(
+    createPhoto(canvas.toDataURL('image/jpeg', 0.92))
+  );
 
   render();
 });
 
+// --------------------------------------------------
 // SELECT SONG
-document.getElementById('songUpload').addEventListener('change', e => {
-  const file = e.target.files[0];
+// --------------------------------------------------
+
+document.getElementById('songUpload').addEventListener('change', event => {
+  const file = event.target.files[0];
 
   if (!file) return;
 
@@ -289,7 +567,10 @@ document.getElementById('songUpload').addEventListener('change', e => {
   document.getElementById('stopMusic').disabled = false;
 });
 
+// --------------------------------------------------
 // PLAY AND PAUSE MUSIC
+// --------------------------------------------------
+
 document.getElementById('playMusic').addEventListener('click', async () => {
   const playButton = document.getElementById('playMusic');
 
@@ -302,7 +583,7 @@ document.getElementById('playMusic').addEventListener('click', async () => {
   try {
     await audioPlayer.play();
     playButton.textContent = 'Ⅱ Pause';
-  } catch {
+  } catch (error) {
     alert('The selected audio file could not be played.');
   }
 });
@@ -311,7 +592,10 @@ audioPlayer.addEventListener('ended', () => {
   document.getElementById('playMusic').textContent = '▶ Play';
 });
 
+// --------------------------------------------------
 // STOP MUSIC
+// --------------------------------------------------
+
 document.getElementById('stopMusic').addEventListener('click', () => {
   audioPlayer.pause();
   audioPlayer.currentTime = 0;
@@ -319,23 +603,10 @@ document.getElementById('stopMusic').addEventListener('click', () => {
   document.getElementById('playMusic').textContent = '▶ Play';
 });
 
-// FIT COMPLETE PHOTO INSIDE FRAME
-function drawContain(ctx, img, x, y, w, h) {
-  const scale = Math.min(
-    w / img.width,
-    h / img.height
-  );
-
-  const drawW = img.width * scale;
-  const drawH = img.height * scale;
-
-  const drawX = x + (w - drawW) / 2;
-  const drawY = y + (h - drawH) / 2;
-
-  ctx.drawImage(img, drawX, drawY, drawW, drawH);
-}
-
+// --------------------------------------------------
 // COLOR THEMES
+// --------------------------------------------------
+
 function themeColors() {
   const themes = {
     pink: {
@@ -373,7 +644,41 @@ function themeColors() {
   return themes[document.getElementById('themeSelect').value];
 }
 
+// --------------------------------------------------
+// DRAW PHOTO WITH THE SAME CROP AS THE PREVIEW
+// --------------------------------------------------
+
+function drawCover(ctx, img, x, y, width, height, photo) {
+  const dimensions = getPhotoDimensions(
+    photo,
+    img.width,
+    img.height,
+    width,
+    height
+  );
+
+  ctx.save();
+
+  // Prevent the zoomed image from extending outside its frame.
+  ctx.beginPath();
+  ctx.rect(x, y, width, height);
+  ctx.clip();
+
+  ctx.drawImage(
+    img,
+    x + dimensions.left,
+    y + dimensions.top,
+    dimensions.width,
+    dimensions.height
+  );
+
+  ctx.restore();
+}
+
+// --------------------------------------------------
 // CREATE EXPORT CANVAS
+// --------------------------------------------------
+
 async function createExportCanvas() {
   const colors = themeColors();
 
@@ -421,7 +726,16 @@ async function createExportCanvas() {
       try {
         const img = await loadImage(photos[i].src);
 
-        drawContain(ctx, img, x, y, photoW, photoH);
+        // Use the saved crop, zoom, and position.
+        drawCover(
+          ctx,
+          img,
+          x,
+          y,
+          photoW,
+          photoH,
+          photos[i]
+        );
 
       } catch (error) {
         console.error('Could not load photo:', error);
@@ -502,28 +816,37 @@ async function createExportCanvas() {
   return canvas;
 }
 
+// --------------------------------------------------
 // EXPORT PNG OR JPEG
+// --------------------------------------------------
+
 async function exportImage(type) {
   if (!photos.length) {
     alert('Please add at least one photo before exporting.');
     return;
   }
 
-  const canvas = await createExportCanvas();
+  try {
+    const canvas = await createExportCanvas();
 
-  const mime = type === 'jpeg'
-    ? 'image/jpeg'
-    : 'image/png';
+    const mime = type === 'jpeg'
+      ? 'image/jpeg'
+      : 'image/png';
 
-  const url = canvas.toDataURL(mime, 0.94);
+    const url = canvas.toDataURL(mime, 0.94);
 
-  const link = document.createElement('a');
+    const link = document.createElement('a');
 
-  link.href = url;
-  link.download =
-    `frame-photobooth.${type === 'jpeg' ? 'jpg' : 'png'}`;
+    link.href = url;
+    link.download =
+      `frame-photobooth.${type === 'jpeg' ? 'jpg' : 'png'}`;
 
-  link.click();
+    link.click();
+
+  } catch (error) {
+    console.error('Export error:', error);
+    alert('Something went wrong while exporting your photo strip.');
+  }
 }
 
 document.getElementById('savePng').addEventListener('click', () => {
@@ -534,77 +857,99 @@ document.getElementById('saveJpg').addEventListener('click', () => {
   exportImage('jpeg');
 });
 
+// --------------------------------------------------
 // EXPORT PDF
+// --------------------------------------------------
+
 document.getElementById('savePdf').addEventListener('click', async () => {
   if (!photos.length) {
     alert('Please add at least one photo before exporting.');
     return;
   }
 
-  const canvas = await createExportCanvas();
-  const dataUrl = canvas.toDataURL('image/png');
+  try {
+    const canvas = await createExportCanvas();
+    const dataUrl = canvas.toDataURL('image/png');
 
-  const printWindow = window.open('', '_blank');
+    const printWindow = window.open('', '_blank');
 
-  if (!printWindow) {
-    alert('Please allow pop-ups to export your PDF.');
-    return;
-  }
+    if (!printWindow) {
+      alert('Please allow pop-ups to export your PDF.');
+      return;
+    }
 
-  printWindow.document.write(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>FRAME Photostrip</title>
-      <style>
-        @page {
-          size: 4in 6in;
-          margin: 0;
-        }
-
-        * {
-          box-sizing: border-box;
-        }
-
-        html, body {
-          margin: 0;
-          padding: 0;
-          width: 100%;
-          height: 100%;
-        }
-
-        img {
-          display: block;
-          width: 100%;
-          height: 100%;
-          object-fit: contain;
-        }
-
-        @media print {
-          body {
-            print-color-adjust: exact;
-            -webkit-print-color-adjust: exact;
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>FRAME Photostrip</title>
+        <style>
+          @page {
+            size: 4in 6in;
+            margin: 0;
           }
-        }
-      </style>
-    </head>
 
-    <body>
-      <img src="${dataUrl}" alt="Photostrip">
+          * {
+            box-sizing: border-box;
+          }
 
-      <script>
-        window.onload = () => {
-          setTimeout(() => window.print(), 250);
-        };
-      <\/script>
-    </body>
-    </html>
-  `);
+          html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+          }
 
-  printWindow.document.close();
+          img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+          }
+
+          @media print {
+            body {
+              print-color-adjust: exact;
+              -webkit-print-color-adjust: exact;
+            }
+          }
+        </style>
+      </head>
+
+      <body>
+        <img src="${dataUrl}" alt="Photostrip">
+
+        <script>
+          window.onload = () => {
+            setTimeout(() => window.print(), 250);
+          };
+        <\/script>
+      </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+
+  } catch (error) {
+    console.error('PDF export error:', error);
+    alert('Something went wrong while preparing your PDF.');
+  }
 });
 
+// --------------------------------------------------
+// UPDATE PHOTO POSITIONS WHEN THE WINDOW RESIZES
+// --------------------------------------------------
+
+window.addEventListener('resize', () => {
+  photos.forEach((photo, index) => {
+    updatePhotoSlot(index);
+  });
+});
+
+// --------------------------------------------------
 // CLEANUP
+// --------------------------------------------------
+
 window.addEventListener('beforeunload', () => {
   if (cameraStream) {
     cameraStream.getTracks().forEach(track => track.stop());
@@ -615,7 +960,10 @@ window.addEventListener('beforeunload', () => {
   }
 });
 
+// --------------------------------------------------
 // SET DEFAULT DATE
+// --------------------------------------------------
+
 document.getElementById('dateInput').value =
   new Date()
     .toLocaleDateString(undefined, {
@@ -625,5 +973,8 @@ document.getElementById('dateInput').value =
     })
     .toUpperCase();
 
+// --------------------------------------------------
 // INITIAL RENDER
+// --------------------------------------------------
+
 render();
