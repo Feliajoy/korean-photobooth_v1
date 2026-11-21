@@ -3,7 +3,7 @@
    ========================================= */
 
 :root {
-  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-serif: 'Playfair Display', Georgia, serif;
 
   --bg: #fbf6f4;
@@ -37,7 +37,12 @@ body {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-h1, h2, h3, p {
+h1, h2, h3 {
+  margin: 0;
+  font-family: var(--font-serif);
+}
+
+p {
   margin: 0;
 }
 
@@ -198,14 +203,9 @@ h1, h2, h3, p {
 }
 
 .section-heading h2 {
-  font-size: 16px;
-  font-weight: 700;
-}
-
-.section-heading p {
-  font-size: 13px;
-  color: var(--muted);
-  margin-top: 2px;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.25;
 }
 
 /* =========================================
@@ -680,8 +680,9 @@ h1, h2, h3, p {
 }
 
 .preview-header h2 {
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.2;
 }
 
 .preview-tag {
@@ -1008,8 +1009,9 @@ h1, h2, h3, p {
 }
 
 .export-panel h3 {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.25;
 }
 
 .export-top p {
