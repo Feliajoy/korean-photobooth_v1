@@ -4,7 +4,7 @@ const MAX_ZOOM = 3;
 const ZOOM_STEP = 0.2;
 const COUNTDOWN_SECONDS = 3;
 
-const FONT_SANS = '"Plus Jakarta Sans", Arial, sans-serif';
+const FONT_SANS = '"Inter", Arial, sans-serif';
 const FONT_SERIF = '"Playfair Display", Georgia, serif';
 
 // Exact 600 DPI print layouts:
