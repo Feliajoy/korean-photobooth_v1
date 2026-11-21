@@ -2,6 +2,146 @@ const MAX_PHOTOS = 6;
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 3;
 const ZOOM_STEP = 0.2;
+const COUNTDOWN_SECONDS = 3;
+
+const FONT_SANS = '"Plus Jakarta Sans", Arial, sans-serif';
+const FONT_SERIF = '"Playfair Display", Georgia, serif';
+
+// Exact 600 DPI print layouts:
+// 2, 3, 4-Cut = 2 x 6 inches (1200 x 3600 px)
+// 6-Cut       = 4 x 6 inches / 4R (2400 x 3600 px)
+const LAYOUT_CONFIG = {
+  2: {
+    cols: 1,
+    rows: 2,
+    width: 1200,
+    height: 3600,
+    padX: 60,
+    padTop: 60,
+    gapX: 0,
+    gapY: 28,
+    photoW: 1080,
+    photoH: 1588,
+    footerH: 336,
+    label: '2 × 6 IN · 600 DPI'
+  },
+  3: {
+    cols: 1,
+    rows: 3,
+    width: 1200,
+    height: 3600,
+    padX: 60,
+    padTop: 60,
+    gapX: 0,
+    gapY: 30,
+    photoW: 1080,
+    photoH: 1048,
+    footerH: 336,
+    label: '2 × 6 IN · 600 DPI'
+  },
+  4: {
+    cols: 1,
+    rows: 4,
+    width: 1200,
+    height: 3600,
+    padX: 60,
+    padTop: 60,
+    gapX: 0,
+    gapY: 28,
+    photoW: 1080,
+    photoH: 780,
+    footerH: 336,
+    label: '2 × 6 IN · 600 DPI'
+  },
+  6: {
+    cols: 2,
+    rows: 3,
+    width: 2400,
+    height: 3600,
+    padX: 80,
+    padTop: 80,
+    gapX: 40,
+    gapY: 38,
+    photoW: 1100,
+    photoH: 1028,
+    footerH: 360,
+    label: '4 × 6 IN (4R) · 600 DPI'
+  }
+};
+
+// Korean photobooth-inspired filters (single source of truth for CSS + Canvas export)
+const FILTERS = {
+  none: {
+    name: 'Original',
+    brightness: 1,
+    contrast: 1,
+    saturate: 1,
+    sepia: 0,
+    grayscale: 0,
+    tint: 'transparent',
+    swatch: 'linear-gradient(135deg, #e7c9c6, #dce9df)'
+  },
+  peach: {
+    name: 'Soft Peach',
+    brightness: 1.06,
+    contrast: 0.95,
+    saturate: 1.12,
+    sepia: 0.08,
+    grayscale: 0,
+    tint: 'rgba(255, 196, 182, 0.13)',
+    swatch: 'linear-gradient(135deg, #ffd8cc, #f29f8f)'
+  },
+  bw: {
+    name: 'B&W Classic',
+    brightness: 1.03,
+    contrast: 1.16,
+    saturate: 1,
+    sepia: 0,
+    grayscale: 1,
+    tint: 'transparent',
+    swatch: 'linear-gradient(135deg, #222222, #e0e0e0)'
+  },
+  film: {
+    name: 'Warm Film',
+    brightness: 1.02,
+    contrast: 1.07,
+    saturate: 1.08,
+    sepia: 0.24,
+    grayscale: 0,
+    tint: 'rgba(255, 206, 138, 0.11)',
+    swatch: 'linear-gradient(135deg, #e9be80, #9d683f)'
+  },
+  seoul: {
+    name: 'Cool Seoul',
+    brightness: 1.06,
+    contrast: 1.04,
+    saturate: 0.92,
+    sepia: 0,
+    grayscale: 0,
+    tint: 'rgba(175, 212, 255, 0.14)',
+    swatch: 'linear-gradient(135deg, #cfe4ff, #87a7d4)'
+  },
+  vintage: {
+    name: 'Vintage 90s',
+    brightness: 1.04,
+    contrast: 0.92,
+    saturate: 0.78,
+    sepia: 0.22,
+    grayscale: 0,
+    tint: 'rgba(218, 192, 165, 0.14)',
+    swatch: 'linear-gradient(135deg, #dac4a8, #8e7966)'
+  },
+  cream: {
+    name: 'Milk Cream',
+    brightness: 1.1,
+    contrast: 0.88,
+    saturate: 0.92,
+    sepia: 0.1,
+    grayscale: 0,
+    tint: 'rgba(255, 245, 228, 0.16)',
+    swatch: 'linear-gradient(135deg, #fff6e6, #e5d2b8)'
+  }
+};
 
 const photoUpload = document.getElementById('photoUpload');
 const replacePhotoInput = document.getElementById('replacePhotoInput');
@@ -11,28 +151,41 @@ const thumbGrid = document.getElementById('thumbGrid');
 const photoStatus = document.getElementById('photoStatus');
 const stripPhotos = document.getElementById('stripPhotos');
 const strip = document.getElementById('strip');
+const previewSizeTag = document.getElementById('previewSizeTag');
 
+const filterGrid = document.getElementById('filterGrid');
 const themeSelect = document.getElementById('themeSelect');
 const captionInput = document.getElementById('captionInput');
 const dateInput = document.getElementById('dateInput');
 
 const camera = document.getElementById('camera');
 const cameraWrap = document.getElementById('cameraWrap');
+const cameraStage = document.getElementById('cameraStage');
+const cameraCountdown = document.getElementById('cameraCountdown');
+const cameraHint = document.getElementById('cameraHint');
 const takePhotoBtn = document.getElementById('takePhoto');
 const startCameraBtn = document.getElementById('startCamera');
+const flipCameraBtn = document.getElementById('flipCamera');
 const audioPlayer = document.getElementById('audioPlayer');
 
+const exportSizeSpec = document.getElementById('exportSizeSpec');
+const mode4rSub = document.getElementById('mode4rSub');
 const savePngBtn = document.getElementById('savePng');
 const saveJpgBtn = document.getElementById('saveJpg');
 const savePdfBtn = document.getElementById('savePdf');
 
-// Fixed-length array prevents sparse-array bugs when adding to a specific slot.
 let photos = Array(MAX_PHOTOS).fill(null);
 let layoutCount = 4;
+let selectedFilter = 'none';
+let exportMode = 'single'; // 'single' | '4r'
 let cameraStream = null;
+let cameraFacingMode = 'user'; // 'user' | 'environment'
+let countdownTimer = null;
+let isCountingDown = false;
 let audioUrl = null;
 let selectedSongName = '';
 let replacementIndex = null;
+let nativeCanvasFilterSupported = null;
 
 // --------------------------------------------------
 // GENERAL HELPERS
@@ -67,7 +220,6 @@ function createPhoto(src) {
   return {
     src,
     zoom: 1,
-    // Stored as ratios of frameWidth / frameHeight so preview and export match 1:1.
     offsetX: 0,
     offsetY: 0
   };
@@ -83,6 +235,147 @@ function getFilledCount() {
 
 function getFirstEmptySlot() {
   return photos.findIndex(item => item === null);
+}
+
+function isTwoUpPrint() {
+  return exportMode === '4r' && layoutCount !== 6;
+}
+
+// --------------------------------------------------
+// PHOTO FILTERS (CSS + CANVAS + FALLBACK)
+// --------------------------------------------------
+
+function getFilterCss(filterKey) {
+  const f = FILTERS[filterKey] || FILTERS.none;
+  if (filterKey === 'none') return 'none';
+
+  const parts = [];
+  if (f.grayscale) parts.push(`grayscale(${f.grayscale})`);
+  if (f.sepia) parts.push(`sepia(${f.sepia})`);
+  if (f.brightness !== 1) parts.push(`brightness(${f.brightness})`);
+  if (f.contrast !== 1) parts.push(`contrast(${f.contrast})`);
+  if (f.saturate !== 1) parts.push(`saturate(${f.saturate})`);
+  return parts.length ? parts.join(' ') : 'none';
+}
+
+function supportsCanvasFilter() {
+  if (nativeCanvasFilterSupported !== null) {
+    return nativeCanvasFilterSupported;
+  }
+  try {
+    const test = document.createElement('canvas');
+    test.width = 2;
+    test.height = 2;
+    const tctx = test.getContext('2d');
+    if (!('filter' in tctx)) {
+      nativeCanvasFilterSupported = false;
+      return false;
+    }
+    tctx.filter = 'grayscale(1)';
+    tctx.fillStyle = '#ff0000';
+    tctx.fillRect(0, 0, 2, 2);
+    const [r, g, b] = tctx.getImageData(0, 0, 1, 1).data;
+    nativeCanvasFilterSupported = r === g && g === b;
+  } catch {
+    nativeCanvasFilterSupported = false;
+  }
+  return nativeCanvasFilterSupported;
+}
+
+function applyPixelFilter(ctx, x, y, width, height, filterKey) {
+  const f = FILTERS[filterKey];
+  if (!f || filterKey === 'none') return;
+
+  const imgData = ctx.getImageData(x, y, width, height);
+  const d = imgData.data;
+
+  for (let i = 0; i < d.length; i += 4) {
+    let r = d[i];
+    let g = d[i + 1];
+    let b = d[i + 2];
+
+    if (f.grayscale > 0) {
+      const gray = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      r = r + (gray - r) * f.grayscale;
+      g = g + (gray - g) * f.grayscale;
+      b = b + (gray - b) * f.grayscale;
+    }
+
+    if (f.sepia > 0) {
+      const sr = r * 0.393 + g * 0.769 + b * 0.189;
+      const sg = r * 0.349 + g * 0.686 + b * 0.168;
+      const sb = r * 0.272 + g * 0.534 + b * 0.131;
+      r = r + (sr - r) * f.sepia;
+      g = g + (sg - g) * f.sepia;
+      b = b + (sb - b) * f.sepia;
+    }
+
+    if (f.brightness !== 1) {
+      r *= f.brightness;
+      g *= f.brightness;
+      b *= f.brightness;
+    }
+
+    if (f.contrast !== 1) {
+      r = (r - 128) * f.contrast + 128;
+      g = (g - 128) * f.contrast + 128;
+      b = (b - 128) * f.contrast + 128;
+    }
+
+    if (f.saturate !== 1) {
+      const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      r = lum + (r - lum) * f.saturate;
+      g = lum + (g - lum) * f.saturate;
+      b = lum + (b - lum) * f.saturate;
+    }
+
+    d[i] = clamp(Math.round(r), 0, 255);
+    d[i + 1] = clamp(Math.round(g), 0, 255);
+    d[i + 2] = clamp(Math.round(b), 0, 255);
+  }
+
+  ctx.putImageData(imgData, x, y);
+}
+
+function initFilterButtons() {
+  filterGrid.replaceChildren();
+
+  Object.entries(FILTERS).forEach(([key, def]) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `filter-chip${key === selectedFilter ? ' active' : ''}`;
+    btn.dataset.filter = key;
+
+    const swatch = document.createElement('span');
+    swatch.className = 'filter-swatch';
+    swatch.style.background = def.swatch;
+
+    const label = document.createElement('span');
+    label.textContent = def.name;
+
+    btn.append(swatch, label);
+
+    btn.addEventListener('click', () => {
+      selectedFilter = key;
+      filterGrid.querySelectorAll('.filter-chip').forEach(chip => {
+        chip.classList.toggle('active', chip.dataset.filter === key);
+      });
+      applyLiveFilter();
+    });
+
+    filterGrid.appendChild(btn);
+  });
+}
+
+function applyLiveFilter() {
+  const f = FILTERS[selectedFilter] || FILTERS.none;
+  const cssFilter = getFilterCss(selectedFilter);
+
+  strip.style.setProperty('--photo-filter', cssFilter);
+  strip.style.setProperty('--photo-tint', f.tint);
+
+  cameraStage.style.setProperty('--photo-filter', cssFilter);
+  cameraStage.style.setProperty('--photo-tint', f.tint);
 }
 
 // --------------------------------------------------
@@ -139,7 +432,7 @@ function updatePreviewImage(slot, img, photo) {
 }
 
 // --------------------------------------------------
-// ZOOM CONTROLS
+// ZOOM & DRAG CONTROLS
 // --------------------------------------------------
 
 function changeZoom(index, amount) {
@@ -180,10 +473,6 @@ function updatePhotoSlot(index) {
   }
   return null;
 }
-
-// --------------------------------------------------
-// PHOTO DRAGGING
-// --------------------------------------------------
 
 function enablePhotoDragging(slot, img, photo) {
   let dragging = false;
@@ -235,10 +524,6 @@ function enablePhotoDragging(slot, img, photo) {
   slot.addEventListener('lostpointercapture', stopDragging);
 }
 
-// --------------------------------------------------
-// CROP CONTROL BUTTONS
-// --------------------------------------------------
-
 function createCropControls(index) {
   const controls = document.createElement('div');
   controls.className = 'crop-toolbar';
@@ -277,8 +562,24 @@ function createCropControls(index) {
 }
 
 // --------------------------------------------------
-// RENDER METADATA (NO PHOTO FLICKER)
+// RENDER METADATA & PHOTOSTRIP
 // --------------------------------------------------
+
+function renderExportInfo() {
+  const cfg = LAYOUT_CONFIG[layoutCount];
+  previewSizeTag.textContent = cfg.label;
+
+  if (layoutCount === 6) {
+    mode4rSub.textContent = '6-Cut already fills a full 4×6 sheet';
+    exportSizeSpec.textContent = 'Output: 4 × 6 in / 4R (2400 × 3600 px · 600 DPI)';
+  } else if (exportMode === '4r') {
+    mode4rSub.textContent = '2 strips side-by-side + cut line';
+    exportSizeSpec.textContent = 'Output: 4 × 6 in / 4R Sheet — 2× strips (2400 × 3600 px · 600 DPI)';
+  } else {
+    mode4rSub.textContent = '2 strips side-by-side + cut line';
+    exportSizeSpec.textContent = 'Output: 2 × 6 in Single Strip (1200 × 3600 px · 600 DPI)';
+  }
+}
 
 function renderStripMeta() {
   strip.className = `strip theme-${themeSelect.value} layout-${layoutCount}`;
@@ -292,18 +593,17 @@ function renderStripMeta() {
   const stripSong = document.getElementById('stripSong');
   stripSong.textContent = selectedSongName ? `♫ ${selectedSongName}` : '';
   stripSong.hidden = !selectedSongName;
-}
 
-// --------------------------------------------------
-// RENDER PHOTOSTRIP & THUMBNAILS
-// --------------------------------------------------
+  applyLiveFilter();
+  renderExportInfo();
+}
 
 function renderPhotos() {
   const slots = [];
 
   for (let i = 0; i < layoutCount; i++) {
     const slot = document.createElement('div');
-    slot.className = 'photo-slot';
+    slot.className = photos[i] ? 'photo-slot has-photo' : 'photo-slot';
 
     if (photos[i]) {
       const photo = photos[i];
@@ -311,7 +611,6 @@ function renderPhotos() {
       img.alt = `Photo ${i + 1}`;
       img.draggable = false;
 
-      // Attach listener before setting src so cached/data URLs are handled reliably.
       img.addEventListener('load', () => {
         updatePreviewImage(slot, img, photo);
       });
@@ -330,7 +629,7 @@ function renderPhotos() {
     const changeButton = document.createElement('button');
     changeButton.type = 'button';
     changeButton.className = 'photo-change-button';
-    changeButton.textContent = photos[i] ? 'Change photo' : 'Add photo';
+    changeButton.textContent = photos[i] ? 'Change' : 'Add photo';
     changeButton.setAttribute(
       'aria-label',
       `${photos[i] ? 'Change' : 'Add'} photo ${i + 1}`
@@ -348,7 +647,6 @@ function renderPhotos() {
 
   stripPhotos.replaceChildren(...slots);
 
-  // Recalculate after DOM layout in case images loaded synchronously.
   requestAnimationFrame(() => {
     for (let i = 0; i < layoutCount; i++) {
       updatePhotoSlot(i);
@@ -386,7 +684,6 @@ function renderPhotos() {
     thumbGrid.appendChild(thumb);
   });
 
-  // STATUS & EXPORT BUTTONS
   const count = getFilledCount();
   photoStatus.textContent =
     `${count} photo${count === 1 ? '' : 's'} added · Add up to ${MAX_PHOTOS} photos`;
@@ -399,7 +696,7 @@ function renderPhotos() {
   savePdfBtn.disabled = !hasPhotos;
 
   document.getElementById('exportHint').textContent = hasPhotos
-    ? 'Empty frames will appear as placeholders. PNG and JPEG save directly; PDF opens your print dialog.'
+    ? 'Tip: Select "4R Print Sheet" to print two 2×6 strips side-by-side on standard 4R photo paper with zero waste.'
     : 'Add at least one photo to enable exporting. Empty frames will remain as placeholders.';
 }
 
@@ -409,7 +706,7 @@ function render() {
 }
 
 // --------------------------------------------------
-// ADD MULTIPLE PHOTOS & CLEAR ALL
+// ADD, REPLACE & CLEAR PHOTOS
 // --------------------------------------------------
 
 async function addFiles(files) {
@@ -452,10 +749,6 @@ clearPhotosBtn.addEventListener('click', () => {
   render();
 });
 
-// --------------------------------------------------
-// REPLACE AN INDIVIDUAL PHOTO
-// --------------------------------------------------
-
 replacePhotoInput.addEventListener('change', async event => {
   const file = event.target.files?.[0];
   if (!file || replacementIndex === null) return;
@@ -481,7 +774,7 @@ replacePhotoInput.addEventListener('change', async event => {
 });
 
 // --------------------------------------------------
-// CHANGE STRIP LAYOUT
+// LAYOUT, EXPORT MODE, THEME, CAPTION & DATE
 // --------------------------------------------------
 
 document.querySelectorAll('[data-layout]').forEach(button => {
@@ -496,23 +789,122 @@ document.querySelectorAll('[data-layout]').forEach(button => {
   });
 });
 
-// --------------------------------------------------
-// THEME, CAPTION, AND DATE
-// --------------------------------------------------
+document.querySelectorAll('[data-export-mode]').forEach(button => {
+  button.addEventListener('click', () => {
+    document.querySelectorAll('[data-export-mode]').forEach(item =>
+      item.classList.remove('active')
+    );
+
+    button.classList.add('active');
+    exportMode = button.dataset.exportMode;
+    renderExportInfo();
+  });
+});
 
 themeSelect.addEventListener('change', renderStripMeta);
 captionInput.addEventListener('input', renderStripMeta);
 dateInput.addEventListener('input', renderStripMeta);
 
 // --------------------------------------------------
-// CAMERA: OPEN, CLOSE, CAPTURE
+// CAMERA: OPEN, CLOSE, FLIP, 3-SECOND COUNTDOWN
 // --------------------------------------------------
 
-startCameraBtn.addEventListener('click', async () => {
+function cancelCountdown() {
+  if (countdownTimer) {
+    clearInterval(countdownTimer);
+    countdownTimer = null;
+  }
+  isCountingDown = false;
+  cameraCountdown.hidden = true;
+  cameraCountdown.textContent = '';
+  takePhotoBtn.textContent = 'Capture';
+  takePhotoBtn.disabled = !cameraStream;
+  flipCameraBtn.disabled = false;
+  cameraHint.textContent = 'Position yourself and press Capture (3s timer)';
+}
+
+function stopCameraStream() {
+  cancelCountdown();
   if (cameraStream) {
     cameraStream.getTracks().forEach(track => track.stop());
     cameraStream = null;
-    camera.srcObject = null;
+  }
+  camera.srcObject = null;
+}
+
+async function openCamera(facingMode) {
+  stopCameraStream();
+
+  cameraStream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: { ideal: facingMode } },
+    audio: false
+  });
+
+  cameraFacingMode = facingMode;
+  camera.srcObject = cameraStream;
+  camera.classList.toggle('mirrored', cameraFacingMode === 'user');
+  cameraWrap.hidden = false;
+  takePhotoBtn.disabled = false;
+  startCameraBtn.textContent = '× Close camera';
+}
+
+function captureCameraFrame() {
+  if (!cameraStream || !camera.videoWidth) return;
+
+  const emptyIndex = getFirstEmptySlot();
+  if (emptyIndex === -1) {
+    alert(`You can add up to ${MAX_PHOTOS} photos.`);
+    return;
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = camera.videoWidth;
+  canvas.height = camera.videoHeight;
+
+  const ctx = canvas.getContext('2d');
+
+  // Mirror only when using the front-facing camera
+  if (cameraFacingMode === 'user') {
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+  }
+
+  ctx.drawImage(camera, 0, 0, canvas.width, canvas.height);
+
+  photos[emptyIndex] = createPhoto(canvas.toDataURL('image/jpeg', 0.92));
+  render();
+}
+
+function startCaptureCountdown() {
+  let remaining = COUNTDOWN_SECONDS;
+  isCountingDown = true;
+  takePhotoBtn.disabled = true;
+  flipCameraBtn.disabled = true;
+  cameraCountdown.hidden = false;
+
+  function renderTick(num) {
+    cameraCountdown.innerHTML = `<span>${num}</span>`;
+    takePhotoBtn.textContent = `Capturing in ${num}…`;
+    cameraHint.textContent = `Hold your pose… ${num}`;
+  }
+
+  renderTick(remaining);
+
+  countdownTimer = setInterval(() => {
+    remaining -= 1;
+
+    if (remaining > 0) {
+      renderTick(remaining);
+    } else {
+      cancelCountdown();
+      captureCameraFrame();
+    }
+  }, 1000);
+}
+
+startCameraBtn.addEventListener('click', async () => {
+  if (cameraStream) {
+    stopCameraStream();
     cameraWrap.hidden = true;
     takePhotoBtn.disabled = true;
     startCameraBtn.textContent = '◎ Open camera';
@@ -520,15 +912,7 @@ startCameraBtn.addEventListener('click', async () => {
   }
 
   try {
-    cameraStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'user' },
-      audio: false
-    });
-
-    camera.srcObject = cameraStream;
-    cameraWrap.hidden = false;
-    takePhotoBtn.disabled = false;
-    startCameraBtn.textContent = '× Close camera';
+    await openCamera(cameraFacingMode);
   } catch (error) {
     console.error('Camera error:', error);
     alert(
@@ -537,25 +921,33 @@ startCameraBtn.addEventListener('click', async () => {
   }
 });
 
+flipCameraBtn.addEventListener('click', async () => {
+  if (!cameraStream || isCountingDown) return;
+  const nextFacing = cameraFacingMode === 'user' ? 'environment' : 'user';
+
+  try {
+    await openCamera(nextFacing);
+  } catch (error) {
+    console.error('Could not switch camera:', error);
+    try {
+      await openCamera(cameraFacingMode);
+    } catch {
+      alert('Unable to switch camera on this device.');
+    }
+  }
+});
+
 takePhotoBtn.addEventListener('click', () => {
-  const emptyIndex = getFirstEmptySlot();
-  if (emptyIndex === -1) {
+  if (isCountingDown) return;
+
+  if (getFirstEmptySlot() === -1) {
     alert(`You can add up to ${MAX_PHOTOS} photos.`);
     return;
   }
+
   if (!camera.videoWidth) return;
 
-  const canvas = document.createElement('canvas');
-  canvas.width = camera.videoWidth;
-  canvas.height = camera.videoHeight;
-
-  const ctx = canvas.getContext('2d');
-  ctx.translate(canvas.width, 0);
-  ctx.scale(-1, 1);
-  ctx.drawImage(camera, 0, 0, canvas.width, canvas.height);
-
-  photos[emptyIndex] = createPhoto(canvas.toDataURL('image/jpeg', 0.92));
-  render();
+  startCaptureCountdown();
 });
 
 // --------------------------------------------------
@@ -610,7 +1002,7 @@ document.getElementById('stopMusic').addEventListener('click', () => {
 });
 
 // --------------------------------------------------
-// COLOR THEMES & EXPORT CANVAS
+// COLOR THEMES & PRINT-READY EXPORT CANVAS
 // --------------------------------------------------
 
 function themeColors() {
@@ -619,31 +1011,36 @@ function themeColors() {
       bg: '#f1d9d7',
       slot: '#e7c9c6',
       text: '#654e4b',
-      sub: '#967b78'
+      sub: '#967b78',
+      cut: 'rgba(101, 78, 75, 0.28)'
     },
     cream: {
       bg: '#e9dfcc',
       slot: '#d8cdb9',
       text: '#5d5143',
-      sub: '#897b69'
+      sub: '#897b69',
+      cut: 'rgba(93, 81, 67, 0.28)'
     },
     black: {
       bg: '#292727',
       slot: '#494343',
       text: '#f3e9e4',
-      sub: '#cbbab3'
+      sub: '#cbbab3',
+      cut: 'rgba(243, 233, 228, 0.32)'
     },
     lavender: {
       bg: '#e4dced',
       slot: '#d0c1dc',
       text: '#665475',
-      sub: '#877795'
+      sub: '#877795',
+      cut: 'rgba(102, 84, 117, 0.28)'
     },
     mint: {
       bg: '#dce9df',
       slot: '#c5d9ca',
       text: '#526e5b',
-      sub: '#7d9784'
+      sub: '#7d9784',
+      cut: 'rgba(82, 110, 91, 0.28)'
     }
   };
 
@@ -659,10 +1056,17 @@ function drawCover(ctx, img, x, y, width, height, photo) {
     height
   );
 
+  const filterDef = FILTERS[selectedFilter] || FILTERS.none;
+  const useNativeFilter = selectedFilter !== 'none' && supportsCanvasFilter();
+
   ctx.save();
   ctx.beginPath();
   ctx.rect(x, y, width, height);
   ctx.clip();
+
+  if (useNativeFilter) {
+    ctx.filter = getFilterCss(selectedFilter);
+  }
 
   ctx.drawImage(
     img,
@@ -672,56 +1076,51 @@ function drawCover(ctx, img, x, y, width, height, photo) {
     dimensions.height
   );
 
+  ctx.filter = 'none';
+
+  if (selectedFilter !== 'none' && !useNativeFilter) {
+    applyPixelFilter(ctx, x, y, width, height, selectedFilter);
+  }
+
+  if (filterDef.tint && filterDef.tint !== 'transparent') {
+    ctx.fillStyle = filterDef.tint;
+    ctx.fillRect(x, y, width, height);
+  }
+
   ctx.restore();
 }
 
-async function createExportCanvas() {
+async function createStripCanvas() {
+  if (document.fonts && document.fonts.ready) {
+    await document.fonts.ready;
+  }
+
   const colors = themeColors();
-
-  const width = 1200;
-  const pad = 64;
-  const gap = 28;
-
-  const photoW = width - pad * 2;
-  // Matches CSS aspect-ratio: 4/3 for 2/3/4-cut and 3/2 for 6-cut.
-  const aspectRatio = layoutCount >= 6 ? 3 / 2 : 4 / 3;
-  const photoH = Math.round(photoW / aspectRatio);
-
-  const captionH = 100;
-  const dateH = 44;
-  const brandH = 44;
-  const songH = selectedSongName ? 40 : 0;
-
-  const height =
-    pad +
-    layoutCount * photoH +
-    (layoutCount - 1) * gap +
-    captionH +
-    dateH +
-    brandH +
-    songH +
-    pad;
+  const cfg = LAYOUT_CONFIG[layoutCount];
 
   const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
+  canvas.width = cfg.width;
+  canvas.height = cfg.height;
 
   const ctx = canvas.getContext('2d');
   ctx.fillStyle = colors.bg;
-  ctx.fillRect(0, 0, width, height);
+  ctx.fillRect(0, 0, cfg.width, cfg.height);
 
   // DRAW PHOTO FRAMES
   for (let i = 0; i < layoutCount; i++) {
-    const x = pad;
-    const y = pad + i * (photoH + gap);
+    const col = i % cfg.cols;
+    const row = Math.floor(i / cfg.cols);
+
+    const x = cfg.padX + col * (cfg.photoW + cfg.gapX);
+    const y = cfg.padTop + row * (cfg.photoH + cfg.gapY);
 
     ctx.fillStyle = colors.slot;
-    ctx.fillRect(x, y, photoW, photoH);
+    ctx.fillRect(x, y, cfg.photoW, cfg.photoH);
 
     if (photos[i]) {
       try {
         const img = await loadImage(photos[i].src);
-        drawCover(ctx, img, x, y, photoW, photoH, photos[i]);
+        drawCover(ctx, img, x, y, cfg.photoW, cfg.photoH, photos[i]);
       } catch (error) {
         console.error('Could not load photo:', error);
       }
@@ -730,52 +1129,111 @@ async function createExportCanvas() {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.letterSpacing = '4px';
-      ctx.font = '500 36px Georgia, serif';
+      ctx.font = `500 32px ${FONT_SERIF}`;
       ctx.fillText(
         `PHOTO ${String(i + 1).padStart(2, '0')}`,
-        width / 2,
-        y + photoH / 2
+        x + cfg.photoW / 2,
+        y + cfg.photoH / 2
       );
     }
   }
 
-  // CAPTION
-  let y = pad + layoutCount * photoH + (layoutCount - 1) * gap;
+  // DRAW FOOTER
+  const footerTop = cfg.height - cfg.footerH;
+  const isWide = layoutCount === 6;
+  const maxTextW = cfg.width - cfg.padX * 2;
 
-  ctx.fillStyle = colors.text;
+  const lines = [];
+  const captionVal = captionInput.value.trim();
+  const dateVal = dateInput.value.trim();
+
+  if (captionVal) {
+    lines.push({
+      text: captionVal,
+      color: colors.text,
+      font: `italic 500 ${isWide ? 60 : 46}px ${FONT_SERIF}`,
+      spacing: '0px',
+      height: isWide ? 82 : 66
+    });
+  }
+
+  if (dateVal) {
+    lines.push({
+      text: dateVal,
+      color: colors.sub,
+      font: `600 ${isWide ? 26 : 21}px ${FONT_SANS}`,
+      spacing: '6px',
+      height: isWide ? 44 : 38
+    });
+  }
+
+  lines.push({
+    text: 'FRAME PHOTO STUDIO',
+    color: colors.sub,
+    font: `600 ${isWide ? 21 : 17}px ${FONT_SANS}`,
+    spacing: '7px',
+    height: isWide ? 40 : 34
+  });
+
+  if (selectedSongName) {
+    lines.push({
+      text: `♫ ${selectedSongName}`,
+      color: colors.sub,
+      font: `italic 500 ${isWide ? 24 : 20}px ${FONT_SANS}`,
+      spacing: '1px',
+      height: isWide ? 44 : 38
+    });
+  }
+
+  const totalBlockH = lines.reduce((sum, item) => sum + item.height, 0);
+  let cursorY = footerTop + (cfg.footerH - totalBlockH) / 2;
+
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.letterSpacing = '0px';
-  ctx.font = 'italic 54px "Cormorant Garamond", Georgia, serif';
-  ctx.fillText(captionInput.value || '', width / 2, y + captionH / 2, width - 100);
-  y += captionH;
 
-  // DATE
-  ctx.fillStyle = colors.sub;
-  ctx.font = '600 22px "DM Sans", Arial, sans-serif';
-  ctx.letterSpacing = '5px';
-  ctx.fillText(dateInput.value || '', width / 2, y + dateH / 2);
-  y += dateH;
-
-  // BRAND
-  ctx.font = '600 17px "DM Sans", Arial, sans-serif';
-  ctx.letterSpacing = '6px';
-  ctx.fillText('FRAME PHOTO STUDIO', width / 2, y + brandH / 2);
-  y += brandH;
-
-  // SONG CREDIT
-  if (selectedSongName) {
-    ctx.fillStyle = colors.sub;
-    ctx.font = 'italic 22px "DM Sans", Arial, sans-serif';
-    ctx.letterSpacing = '1px';
-    ctx.fillText(`♫ ${selectedSongName}`, width / 2, y + songH / 2, width - 100);
+  for (const line of lines) {
+    ctx.fillStyle = line.color;
+    ctx.font = line.font;
+    ctx.letterSpacing = line.spacing;
+    ctx.fillText(line.text, cfg.width / 2, cursorY + line.height / 2, maxTextW);
+    cursorY += line.height;
   }
 
   return canvas;
 }
 
+async function createFinalExportCanvas() {
+  const stripCanvas = await createStripCanvas();
+
+  if (!isTwoUpPrint()) {
+    return stripCanvas;
+  }
+
+  const colors = themeColors();
+  const sheet = document.createElement('canvas');
+  sheet.width = 2400;  // 4 in @ 600 DPI
+  sheet.height = 3600; // 6 in @ 600 DPI
+
+  const ctx = sheet.getContext('2d');
+  ctx.drawImage(stripCanvas, 0, 0);
+  ctx.drawImage(stripCanvas, 1200, 0);
+
+  // Subtle dashed cut guide down the center
+  ctx.save();
+  ctx.strokeStyle = colors.cut;
+  ctx.lineWidth = 2;
+  ctx.setLineDash([16, 16]);
+  ctx.beginPath();
+  ctx.moveTo(1200, 0);
+  ctx.lineTo(1200, 3600);
+  ctx.stroke();
+  ctx.restore();
+
+  return sheet;
+}
+
 // --------------------------------------------------
-// EXPORT PNG, JPEG, PDF
+// EXPORT PNG, JPEG, PDF (MOBILE-SAFE)
 // --------------------------------------------------
 
 async function exportImage(type) {
@@ -785,14 +1243,31 @@ async function exportImage(type) {
   }
 
   try {
-    const canvas = await createExportCanvas();
+    const canvas = await createFinalExportCanvas();
     const mime = type === 'jpeg' ? 'image/jpeg' : 'image/png';
-    const url = canvas.toDataURL(mime, 0.94);
+    const ext = type === 'jpeg' ? 'jpg' : 'png';
 
+    const suffix = isTwoUpPrint()
+      ? `${layoutCount}cut-4R-sheet`
+      : `${layoutCount}cut-${layoutCount === 6 ? '4R' : '2x6'}`;
+
+    const blob = await new Promise(resolve =>
+      canvas.toBlob(resolve, mime, 0.95)
+    );
+
+    if (!blob) {
+      throw new Error('Failed to create image blob.');
+    }
+
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `frame-photobooth.${type === 'jpeg' ? 'jpg' : 'png'}`;
+    link.download = `frame-${suffix}.${ext}`;
+    document.body.appendChild(link);
     link.click();
+    link.remove();
+
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
   } catch (error) {
     console.error('Export error:', error);
     alert('Something went wrong while exporting your photo strip.');
@@ -808,40 +1283,82 @@ savePdfBtn.addEventListener('click', async () => {
     return;
   }
 
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    alert('Please allow pop-ups to print or save as PDF.');
+    return;
+  }
+
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Preparing Print Sheet…</title>
+      <style>
+        body {
+          margin: 0;
+          min-height: 100vh;
+          display: grid;
+          place-items: center;
+          font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+          background: #fbf6f4;
+          color: #352927;
+        }
+      </style>
+    </head>
+    <body>Preparing your 600 DPI print sheet…</body>
+    </html>
+  `);
+
   try {
-    const canvas = await createExportCanvas();
-    const dataUrl = canvas.toDataURL('image/png');
-    const printWindow = window.open('', '_blank');
+    const canvas = await createFinalExportCanvas();
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.96);
 
-    if (!printWindow) {
-      alert('Please allow pop-ups to export your PDF.');
-      return;
-    }
+    const pageW = isTwoUpPrint() || layoutCount === 6 ? 4 : 2;
+    const pageH = 6;
 
+    printWindow.document.open();
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
       <head>
-        <title>FRAME Photostrip</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>FRAME Photostrip (${pageW}x${pageH} in)</title>
         <style>
-          @page { size: 4in 6in; margin: 0; }
+          @page {
+            size: ${pageW}in ${pageH}in;
+            margin: 0;
+          }
           * { box-sizing: border-box; }
           html, body {
             margin: 0;
             padding: 0;
             width: 100%;
-            height: 100%;
+            min-height: 100%;
             display: grid;
             place-items: center;
             background: #ffffff;
           }
           img {
             display: block;
-            max-width: 100%;
-            max-height: 100%;
+            width: ${pageW}in;
+            height: ${pageH}in;
+            max-width: 100vw;
+            max-height: 100vh;
             object-fit: contain;
           }
           @media print {
+            html, body {
+              width: ${pageW}in;
+              height: ${pageH}in;
+            }
+            img {
+              width: 100%;
+              height: 100%;
+              max-width: none;
+              max-height: none;
+            }
             body {
               print-color-adjust: exact;
               -webkit-print-color-adjust: exact;
@@ -853,16 +1370,16 @@ savePdfBtn.addEventListener('click', async () => {
         <img src="${dataUrl}" alt="Photostrip">
         <script>
           window.onload = () => {
-            setTimeout(() => window.print(), 250);
+            setTimeout(() => window.print(), 300);
           };
         <\/script>
       </body>
       </html>
     `);
-
     printWindow.document.close();
   } catch (error) {
     console.error('PDF export error:', error);
+    printWindow.close();
     alert('Something went wrong while preparing your PDF.');
   }
 });
@@ -878,9 +1395,7 @@ window.addEventListener('resize', () => {
 });
 
 window.addEventListener('beforeunload', () => {
-  if (cameraStream) {
-    cameraStream.getTracks().forEach(track => track.stop());
-  }
+  stopCameraStream();
   if (audioUrl) {
     URL.revokeObjectURL(audioUrl);
   }
@@ -894,4 +1409,5 @@ dateInput.value = new Date()
   })
   .toUpperCase();
 
+initFilterButtons();
 render();
