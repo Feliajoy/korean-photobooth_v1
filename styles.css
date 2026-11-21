@@ -71,3 +71,78 @@
 .strip-song[hidden] {
   display: none;
 }
+
+
+/* ========================================
+   FRAME PHOTO CROP CONTROLS
+======================================== */
+
+/* Keep each photo inside its original frame */
+.photo-slot {
+  position: relative;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.photo-slot img {
+  display: block;
+  max-width: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  cursor: grab;
+}
+
+.photo-slot:active img {
+  cursor: grabbing;
+}
+
+/* Zoom and reset toolbar */
+.crop-toolbar {
+  position: absolute;
+  z-index: 4;
+  left: 7px;
+  bottom: 7px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.photo-slot:hover .crop-toolbar {
+  opacity: 1;
+}
+
+.crop-control-button {
+  min-width: 27px;
+  height: 25px;
+  padding: 0 7px;
+  border: 1px solid rgba(255,255,255,0.45);
+  border-radius: 5px;
+  background: rgba(45,35,35,0.82);
+  color: white;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.crop-control-button:hover {
+  background: rgba(45,35,35,0.98);
+}
+
+.crop-reset-button {
+  font-size: 9px;
+}
+
+/* Keep controls accessible on mobile */
+@media (hover: none) {
+  .crop-toolbar {
+    opacity: 1;
+  }
+
+  .photo-change-button {
+    opacity: 1;
+  }
+}
