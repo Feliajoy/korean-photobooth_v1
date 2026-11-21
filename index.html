@@ -26,6 +26,7 @@
           <div class="section-heading"><span class="step">01</span><div><h2>Add your photos</h2><p>Upload pictures or use your camera.</p></div></div>
           <label class="upload-button" for="photoUpload"><span>＋</span> Choose photos</label>
           <input id="photoUpload" type="file" accept="image/*" multiple hidden>
+          <input id="replacePhotoInput" type="file" accept="image/*" hidden>
           <div class="camera-row">
             <button class="button button-dark" id="startCamera">◎ Open camera</button>
             <button class="button button-light" id="takePhoto" disabled>Capture</button>
@@ -85,6 +86,7 @@
             <div class="strip-caption" id="stripCaption">a day to remember</div>
             <div class="strip-date" id="stripDate"></div>
             <div class="strip-brand">FRAME PHOTO STUDIO</div>
+            <div class="strip-song" id="stripSong" hidden></div>
           </div>
           <p class="stage-tip">Your finished strip will appear here</p>
         </div>
