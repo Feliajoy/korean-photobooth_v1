@@ -1,4 +1,3 @@
-
 const MAX_PHOTOS = 6;
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 3;
@@ -6,11 +5,16 @@ const ZOOM_STEP = 0.2;
 
 const photoUpload = document.getElementById('photoUpload');
 const replacePhotoInput = document.getElementById('replacePhotoInput');
+const clearPhotosBtn = document.getElementById('clearPhotos');
 
 const thumbGrid = document.getElementById('thumbGrid');
 const photoStatus = document.getElementById('photoStatus');
 const stripPhotos = document.getElementById('stripPhotos');
 const strip = document.getElementById('strip');
+
+const themeSelect = document.getElementById('themeSelect');
+const captionInput = document.getElementById('captionInput');
+const dateInput = document.getElementById('dateInput');
 
 const camera = document.getElementById('camera');
 const cameraWrap = document.getElementById('cameraWrap');
@@ -18,7 +22,12 @@ const takePhotoBtn = document.getElementById('takePhoto');
 const startCameraBtn = document.getElementById('startCamera');
 const audioPlayer = document.getElementById('audioPlayer');
 
-let photos = [];
+const savePngBtn = document.getElementById('savePng');
+const saveJpgBtn = document.getElementById('saveJpg');
+const savePdfBtn = document.getElementById('savePdf');
+
+// Fixed-length array prevents sparse-array bugs when adding to a specific slot.
+let photos = Array(MAX_PHOTOS).fill(null);
 let layoutCount = 4;
 let cameraStream = null;
 let audioUrl = null;
@@ -39,7 +48,6 @@ function formatSongTitle(fileName) {
 function loadImage(src) {
   return new Promise((resolve, reject) => {
     const img = new Image();
-
     img.onload = () => resolve(img);
     img.onerror = reject;
     img.src = src;
@@ -49,10 +57,8 @@ function loadImage(src) {
 function readFileAsDataURL(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-
     reader.onload = () => resolve(reader.result);
     reader.onerror = () => reject(reader.error);
-
     reader.readAsDataURL(file);
   });
 }
@@ -61,6 +67,7 @@ function createPhoto(src) {
   return {
     src,
     zoom: 1,
+    // Stored as ratios of frameWidth / frameHeight so preview and export match 1:1.
     offsetX: 0,
     offsetY: 0
   };
@@ -68,6 +75,14 @@ function createPhoto(src) {
 
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
+}
+
+function getFilledCount() {
+  return photos.filter(Boolean).length;
+}
+
+function getFirstEmptySlot() {
+  return photos.findIndex(item => item === null);
 }
 
 // --------------------------------------------------
@@ -81,39 +96,31 @@ function getPhotoDimensions(photo, imageWidth, imageHeight, frameWidth, frameHei
   );
 
   const scale = baseScale * (photo.zoom || 1);
-
   const drawWidth = imageWidth * scale;
   const drawHeight = imageHeight * scale;
 
-  // Maximum distance the image can move without showing empty space.
   const limitX = Math.max(0, (drawWidth - frameWidth) / 2);
   const limitY = Math.max(0, (drawHeight - frameHeight) / 2);
 
-  photo.offsetX = clamp(photo.offsetX || 0, -limitX, limitX);
-  photo.offsetY = clamp(photo.offsetY || 0, -limitY, limitY);
-
-  const left =
-    (frameWidth - drawWidth) / 2 + photo.offsetX;
-
-  const top =
-    (frameHeight - drawHeight) / 2 + photo.offsetY;
+  const clampedX = clamp((photo.offsetX || 0) * frameWidth, -limitX, limitX);
+  const clampedY = clamp((photo.offsetY || 0) * frameHeight, -limitY, limitY);
 
   return {
     width: drawWidth,
     height: drawHeight,
-    left,
-    top
+    left: (frameWidth - drawWidth) / 2 + clampedX,
+    top: (frameHeight - drawHeight) / 2 + clampedY,
+    clampedRatioX: frameWidth ? clampedX / frameWidth : 0,
+    clampedRatioY: frameHeight ? clampedY / frameHeight : 0
   };
 }
 
-// Update the photo displayed in the live preview.
 function updatePreviewImage(slot, img, photo) {
-  if (!slot || !img || !img.naturalWidth) return;
+  if (!slot || !img || !img.naturalWidth) return null;
 
   const frameWidth = slot.clientWidth;
   const frameHeight = slot.clientHeight;
-
-  if (!frameWidth || !frameHeight) return;
+  if (!frameWidth || !frameHeight) return null;
 
   const dimensions = getPhotoDimensions(
     photo,
@@ -123,13 +130,12 @@ function updatePreviewImage(slot, img, photo) {
     frameHeight
   );
 
-  img.style.position = 'absolute';
-  img.style.maxWidth = 'none';
   img.style.width = `${dimensions.width}px`;
   img.style.height = `${dimensions.height}px`;
   img.style.left = `${dimensions.left}px`;
   img.style.top = `${dimensions.top}px`;
-  img.style.objectFit = 'fill';
+
+  return dimensions;
 }
 
 // --------------------------------------------------
@@ -138,21 +144,23 @@ function updatePreviewImage(slot, img, photo) {
 
 function changeZoom(index, amount) {
   const photo = photos[index];
-
   if (!photo) return;
 
   photo.zoom = clamp(
-    photo.zoom + amount,
+    Number((photo.zoom + amount).toFixed(2)),
     MIN_ZOOM,
     MAX_ZOOM
   );
 
-  updatePhotoSlot(index);
+  const dims = updatePhotoSlot(index);
+  if (dims) {
+    photo.offsetX = dims.clampedRatioX;
+    photo.offsetY = dims.clampedRatioY;
+  }
 }
 
 function resetCrop(index) {
   const photo = photos[index];
-
   if (!photo) return;
 
   photo.zoom = 1;
@@ -164,14 +172,13 @@ function resetCrop(index) {
 
 function updatePhotoSlot(index) {
   const slot = stripPhotos.children[index];
-
-  if (!slot || !photos[index]) return;
+  if (!slot || !photos[index]) return null;
 
   const img = slot.querySelector('img');
-
-  if (img && img.complete) {
-    updatePreviewImage(slot, img, photos[index]);
+  if (img && img.complete && img.naturalWidth) {
+    return updatePreviewImage(slot, img, photos[index]);
   }
+  return null;
 }
 
 // --------------------------------------------------
@@ -204,10 +211,18 @@ function enablePhotoDragging(slot, img, photo) {
     lastX = event.clientX;
     lastY = event.clientY;
 
-    photo.offsetX += deltaX;
-    photo.offsetY += deltaY;
+    const frameWidth = slot.clientWidth || 1;
+    const frameHeight = slot.clientHeight || 1;
 
-    updatePreviewImage(slot, img, photo);
+    photo.offsetX += deltaX / frameWidth;
+    photo.offsetY += deltaY / frameHeight;
+
+    const dims = updatePreviewImage(slot, img, photo);
+    if (dims) {
+      photo.offsetX = dims.clampedRatioX;
+      photo.offsetY = dims.clampedRatioY;
+    }
+
     event.preventDefault();
   });
 
@@ -233,7 +248,6 @@ function createCropControls(index) {
   zoomOut.className = 'crop-control-button';
   zoomOut.textContent = '−';
   zoomOut.setAttribute('aria-label', 'Zoom out');
-
   zoomOut.addEventListener('click', event => {
     event.stopPropagation();
     changeZoom(index, -ZOOM_STEP);
@@ -244,7 +258,6 @@ function createCropControls(index) {
   zoomIn.className = 'crop-control-button';
   zoomIn.textContent = '+';
   zoomIn.setAttribute('aria-label', 'Zoom in');
-
   zoomIn.addEventListener('click', event => {
     event.stopPropagation();
     changeZoom(index, ZOOM_STEP);
@@ -254,22 +267,38 @@ function createCropControls(index) {
   reset.type = 'button';
   reset.className = 'crop-control-button crop-reset-button';
   reset.textContent = 'Reset';
-
   reset.addEventListener('click', event => {
     event.stopPropagation();
     resetCrop(index);
   });
 
   controls.append(zoomOut, zoomIn, reset);
-
   return controls;
 }
 
 // --------------------------------------------------
-// RENDER PHOTOSTRIP
+// RENDER METADATA (NO PHOTO FLICKER)
 // --------------------------------------------------
 
-function render() {
+function renderStripMeta() {
+  strip.className = `strip theme-${themeSelect.value} layout-${layoutCount}`;
+
+  document.getElementById('stripCaption').textContent =
+    captionInput.value || '';
+
+  document.getElementById('stripDate').textContent =
+    dateInput.value || '';
+
+  const stripSong = document.getElementById('stripSong');
+  stripSong.textContent = selectedSongName ? `♫ ${selectedSongName}` : '';
+  stripSong.hidden = !selectedSongName;
+}
+
+// --------------------------------------------------
+// RENDER PHOTOSTRIP & THUMBNAILS
+// --------------------------------------------------
+
+function renderPhotos() {
   const slots = [];
 
   for (let i = 0; i < layoutCount; i++) {
@@ -278,42 +307,30 @@ function render() {
 
     if (photos[i]) {
       const photo = photos[i];
-
       const img = document.createElement('img');
-      img.src = photo.src;
       img.alt = `Photo ${i + 1}`;
       img.draggable = false;
 
+      // Attach listener before setting src so cached/data URLs are handled reliably.
       img.addEventListener('load', () => {
         updatePreviewImage(slot, img, photo);
       });
+      img.src = photo.src;
 
       slot.appendChild(img);
-
-      // Individual crop controls.
       slot.appendChild(createCropControls(i));
-
-      // Drag to reposition.
       enablePhotoDragging(slot, img, photo);
-
     } else {
       const placeholder = document.createElement('span');
       placeholder.className = 'placeholder';
-      placeholder.textContent =
-        `PHOTO ${String(i + 1).padStart(2, '0')}`;
-
+      placeholder.textContent = `PHOTO ${String(i + 1).padStart(2, '0')}`;
       slot.appendChild(placeholder);
     }
 
-    // CHANGE OR ADD INDIVIDUAL PHOTO
     const changeButton = document.createElement('button');
-
     changeButton.type = 'button';
     changeButton.className = 'photo-change-button';
-    changeButton.textContent = photos[i]
-      ? 'Change photo'
-      : 'Add photo';
-
+    changeButton.textContent = photos[i] ? 'Change photo' : 'Add photo';
     changeButton.setAttribute(
       'aria-label',
       `${photos[i] ? 'Change' : 'Add'} photo ${i + 1}`
@@ -331,30 +348,19 @@ function render() {
 
   stripPhotos.replaceChildren(...slots);
 
-  // FRAME THEME
-  strip.className =
-    `strip theme-${document.getElementById('themeSelect').value}`;
-
-  // CAPTION AND DATE
-  document.getElementById('stripCaption').textContent =
-    document.getElementById('captionInput').value || '';
-
-  document.getElementById('stripDate').textContent =
-    document.getElementById('dateInput').value || '';
-
-  // SELECTED SONG CREDIT
-  const stripSong = document.getElementById('stripSong');
-
-  stripSong.textContent = selectedSongName
-    ? `♫ ${selectedSongName}`
-    : '';
-
-  stripSong.hidden = !selectedSongName;
+  // Recalculate after DOM layout in case images loaded synchronously.
+  requestAnimationFrame(() => {
+    for (let i = 0; i < layoutCount; i++) {
+      updatePhotoSlot(i);
+    }
+  });
 
   // THUMBNAIL PREVIEW
   thumbGrid.replaceChildren();
 
   photos.forEach((photo, index) => {
+    if (!photo) return;
+
     const thumb = document.createElement('div');
     thumb.className = 'thumb';
 
@@ -363,24 +369,47 @@ function render() {
     img.alt = `Uploaded photo ${index + 1}`;
 
     const number = document.createElement('span');
+    number.className = 'thumb-number';
     number.textContent = index + 1;
 
-    thumb.append(img, number);
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'thumb-remove';
+    removeBtn.textContent = '×';
+    removeBtn.setAttribute('aria-label', `Remove photo ${index + 1}`);
+    removeBtn.addEventListener('click', () => {
+      photos[index] = null;
+      render();
+    });
+
+    thumb.append(img, number, removeBtn);
     thumbGrid.appendChild(thumb);
   });
 
-  // PHOTO STATUS
+  // STATUS & EXPORT BUTTONS
+  const count = getFilledCount();
   photoStatus.textContent =
-    `${photos.length} photo${photos.length === 1 ? '' : 's'} added · Add up to ${MAX_PHOTOS} photos`;
+    `${count} photo${count === 1 ? '' : 's'} added · Add up to ${MAX_PHOTOS} photos`;
 
-  // EXPORT INFORMATION
-  document.getElementById('exportHint').textContent = photos.length
+  clearPhotosBtn.hidden = count === 0;
+
+  const hasPhotos = count > 0;
+  savePngBtn.disabled = !hasPhotos;
+  saveJpgBtn.disabled = !hasPhotos;
+  savePdfBtn.disabled = !hasPhotos;
+
+  document.getElementById('exportHint').textContent = hasPhotos
     ? 'Empty frames will appear as placeholders. PNG and JPEG save directly; PDF opens your print dialog.'
     : 'Add at least one photo to enable exporting. Empty frames will remain as placeholders.';
 }
 
+function render() {
+  renderStripMeta();
+  renderPhotos();
+}
+
 // --------------------------------------------------
-// ADD MULTIPLE PHOTOS
+// ADD MULTIPLE PHOTOS & CLEAR ALL
 // --------------------------------------------------
 
 async function addFiles(files) {
@@ -388,20 +417,26 @@ async function addFiles(files) {
     file.type.startsWith('image/')
   );
 
-  const room = MAX_PHOTOS - photos.length;
+  let skipped = 0;
 
-  for (const file of imageFiles.slice(0, room)) {
+  for (const file of imageFiles) {
+    const emptyIndex = getFirstEmptySlot();
+    if (emptyIndex === -1) {
+      skipped++;
+      continue;
+    }
+
     try {
       const src = await readFileAsDataURL(file);
-      photos.push(createPhoto(src));
+      photos[emptyIndex] = createPhoto(src);
     } catch (error) {
       console.error('Could not read photo:', error);
       alert(`Could not load ${file.name}.`);
     }
   }
 
-  if (imageFiles.length > room) {
-    alert(`Only ${MAX_PHOTOS} photos can be added. Extra files were skipped.`);
+  if (skipped > 0) {
+    alert(`Only ${MAX_PHOTOS} photos can be added. ${skipped} extra file${skipped === 1 ? ' was' : 's were'} skipped.`);
   }
 
   render();
@@ -412,13 +447,17 @@ photoUpload.addEventListener('change', event => {
   photoUpload.value = '';
 });
 
+clearPhotosBtn.addEventListener('click', () => {
+  photos = Array(MAX_PHOTOS).fill(null);
+  render();
+});
+
 // --------------------------------------------------
 // REPLACE AN INDIVIDUAL PHOTO
 // --------------------------------------------------
 
 replacePhotoInput.addEventListener('change', async event => {
   const file = event.target.files?.[0];
-
   if (!file || replacementIndex === null) return;
 
   if (!file.type.startsWith('image/')) {
@@ -429,13 +468,9 @@ replacePhotoInput.addEventListener('change', async event => {
 
   try {
     const src = await readFileAsDataURL(file);
-
-    // Replacing a photo resets its crop settings.
     photos[replacementIndex] = createPhoto(src);
-
     replacementIndex = null;
     render();
-
   } catch (error) {
     console.error('Could not replace photo:', error);
     alert('The selected photo could not be loaded.');
@@ -456,7 +491,6 @@ document.querySelectorAll('[data-layout]').forEach(button => {
     );
 
     button.classList.add('active');
-
     layoutCount = Number(button.dataset.layout);
     render();
   });
@@ -466,24 +500,22 @@ document.querySelectorAll('[data-layout]').forEach(button => {
 // THEME, CAPTION, AND DATE
 // --------------------------------------------------
 
-['themeSelect', 'captionInput', 'dateInput'].forEach(id => {
-  document.getElementById(id).addEventListener('input', render);
-});
+themeSelect.addEventListener('change', renderStripMeta);
+captionInput.addEventListener('input', renderStripMeta);
+dateInput.addEventListener('input', renderStripMeta);
 
 // --------------------------------------------------
-// CAMERA: OPEN AND CLOSE
+// CAMERA: OPEN, CLOSE, CAPTURE
 // --------------------------------------------------
 
 startCameraBtn.addEventListener('click', async () => {
   if (cameraStream) {
     cameraStream.getTracks().forEach(track => track.stop());
-
     cameraStream = null;
     camera.srcObject = null;
     cameraWrap.hidden = true;
     takePhotoBtn.disabled = true;
     startCameraBtn.textContent = '◎ Open camera';
-
     return;
   }
 
@@ -497,56 +529,41 @@ startCameraBtn.addEventListener('click', async () => {
     cameraWrap.hidden = false;
     takePhotoBtn.disabled = false;
     startCameraBtn.textContent = '× Close camera';
-
   } catch (error) {
     console.error('Camera error:', error);
-
     alert(
       'Camera access was not available. Please allow camera permission and use this page on localhost or HTTPS.'
     );
   }
 });
 
-// --------------------------------------------------
-// CAMERA: CAPTURE PHOTO
-// --------------------------------------------------
-
 takePhotoBtn.addEventListener('click', () => {
-  if (!camera.videoWidth || photos.length >= MAX_PHOTOS) {
-    if (photos.length >= MAX_PHOTOS) {
-      alert(`You can add up to ${MAX_PHOTOS} photos.`);
-    }
-
+  const emptyIndex = getFirstEmptySlot();
+  if (emptyIndex === -1) {
+    alert(`You can add up to ${MAX_PHOTOS} photos.`);
     return;
   }
+  if (!camera.videoWidth) return;
 
   const canvas = document.createElement('canvas');
-
   canvas.width = camera.videoWidth;
   canvas.height = camera.videoHeight;
 
   const ctx = canvas.getContext('2d');
-
-  // Mirror webcam image.
   ctx.translate(canvas.width, 0);
   ctx.scale(-1, 1);
-
   ctx.drawImage(camera, 0, 0, canvas.width, canvas.height);
 
-  photos.push(
-    createPhoto(canvas.toDataURL('image/jpeg', 0.92))
-  );
-
+  photos[emptyIndex] = createPhoto(canvas.toDataURL('image/jpeg', 0.92));
   render();
 });
 
 // --------------------------------------------------
-// SELECT SONG
+// MUSIC CONTROLS
 // --------------------------------------------------
 
 document.getElementById('songUpload').addEventListener('change', event => {
   const file = event.target.files[0];
-
   if (!file) return;
 
   if (audioUrl) {
@@ -555,21 +572,15 @@ document.getElementById('songUpload').addEventListener('change', event => {
 
   audioUrl = URL.createObjectURL(file);
   audioPlayer.src = audioUrl;
-
   selectedSongName = formatSongTitle(file.name);
 
-  document.getElementById('musicStatus').textContent =
-    `Selected: ${file.name}`;
-
-  render();
-
+  document.getElementById('musicStatus').textContent = `Selected: ${file.name}`;
   document.getElementById('playMusic').disabled = false;
   document.getElementById('stopMusic').disabled = false;
-});
+  document.getElementById('playMusic').textContent = '▶ Play';
 
-// --------------------------------------------------
-// PLAY AND PAUSE MUSIC
-// --------------------------------------------------
+  renderStripMeta();
+});
 
 document.getElementById('playMusic').addEventListener('click', async () => {
   const playButton = document.getElementById('playMusic');
@@ -592,19 +603,14 @@ audioPlayer.addEventListener('ended', () => {
   document.getElementById('playMusic').textContent = '▶ Play';
 });
 
-// --------------------------------------------------
-// STOP MUSIC
-// --------------------------------------------------
-
 document.getElementById('stopMusic').addEventListener('click', () => {
   audioPlayer.pause();
   audioPlayer.currentTime = 0;
-
   document.getElementById('playMusic').textContent = '▶ Play';
 });
 
 // --------------------------------------------------
-// COLOR THEMES
+// COLOR THEMES & EXPORT CANVAS
 // --------------------------------------------------
 
 function themeColors() {
@@ -641,12 +647,8 @@ function themeColors() {
     }
   };
 
-  return themes[document.getElementById('themeSelect').value];
+  return themes[themeSelect.value] || themes.pink;
 }
-
-// --------------------------------------------------
-// DRAW PHOTO WITH THE SAME CROP AS THE PREVIEW
-// --------------------------------------------------
 
 function drawCover(ctx, img, x, y, width, height, photo) {
   const dimensions = getPhotoDimensions(
@@ -658,8 +660,6 @@ function drawCover(ctx, img, x, y, width, height, photo) {
   );
 
   ctx.save();
-
-  // Prevent the zoomed image from extending outside its frame.
   ctx.beginPath();
   ctx.rect(x, y, width, height);
   ctx.clip();
@@ -675,10 +675,6 @@ function drawCover(ctx, img, x, y, width, height, photo) {
   ctx.restore();
 }
 
-// --------------------------------------------------
-// CREATE EXPORT CANVAS
-// --------------------------------------------------
-
 async function createExportCanvas() {
   const colors = themeColors();
 
@@ -687,12 +683,14 @@ async function createExportCanvas() {
   const gap = 28;
 
   const photoW = width - pad * 2;
-  const photoH = layoutCount >= 6 ? 420 : 470;
+  // Matches CSS aspect-ratio: 4/3 for 2/3/4-cut and 3/2 for 6-cut.
+  const aspectRatio = layoutCount >= 6 ? 3 / 2 : 4 / 3;
+  const photoH = Math.round(photoW / aspectRatio);
 
-  const captionH = 95;
-  const dateH = 42;
-  const brandH = 45;
-  const songH = selectedSongName ? 38 : 0;
+  const captionH = 100;
+  const dateH = 44;
+  const brandH = 44;
+  const songH = selectedSongName ? 40 : 0;
 
   const height =
     pad +
@@ -705,12 +703,10 @@ async function createExportCanvas() {
     pad;
 
   const canvas = document.createElement('canvas');
-
   canvas.width = width;
   canvas.height = height;
 
   const ctx = canvas.getContext('2d');
-
   ctx.fillStyle = colors.bg;
   ctx.fillRect(0, 0, width, height);
 
@@ -725,18 +721,7 @@ async function createExportCanvas() {
     if (photos[i]) {
       try {
         const img = await loadImage(photos[i].src);
-
-        // Use the saved crop, zoom, and position.
-        drawCover(
-          ctx,
-          img,
-          x,
-          y,
-          photoW,
-          photoH,
-          photos[i]
-        );
-
+        drawCover(ctx, img, x, y, photoW, photoH, photos[i]);
       } catch (error) {
         console.error('Could not load photo:', error);
       }
@@ -744,8 +729,8 @@ async function createExportCanvas() {
       ctx.fillStyle = colors.sub;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.font = '500 34px Georgia';
-
+      ctx.letterSpacing = '4px';
+      ctx.font = '500 36px Georgia, serif';
       ctx.fillText(
         `PHOTO ${String(i + 1).padStart(2, '0')}`,
         width / 2,
@@ -755,114 +740,70 @@ async function createExportCanvas() {
   }
 
   // CAPTION
-  let y =
-    pad +
-    layoutCount * photoH +
-    (layoutCount - 1) * gap;
+  let y = pad + layoutCount * photoH + (layoutCount - 1) * gap;
 
   ctx.fillStyle = colors.text;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.font = 'italic 48px Georgia';
-
-  ctx.fillText(
-    document.getElementById('captionInput').value || '',
-    width / 2,
-    y + captionH / 2,
-    width - 100
-  );
-
+  ctx.letterSpacing = '0px';
+  ctx.font = 'italic 54px "Cormorant Garamond", Georgia, serif';
+  ctx.fillText(captionInput.value || '', width / 2, y + captionH / 2, width - 100);
   y += captionH;
 
   // DATE
   ctx.fillStyle = colors.sub;
-  ctx.font = '500 22px Arial';
+  ctx.font = '600 22px "DM Sans", Arial, sans-serif';
   ctx.letterSpacing = '5px';
-
-  ctx.fillText(
-    document.getElementById('dateInput').value || '',
-    width / 2,
-    y + dateH / 2
-  );
-
+  ctx.fillText(dateInput.value || '', width / 2, y + dateH / 2);
   y += dateH;
 
   // BRAND
-  ctx.font = '500 16px Arial';
+  ctx.font = '600 17px "DM Sans", Arial, sans-serif';
   ctx.letterSpacing = '6px';
-
-  ctx.fillText(
-    'FRAME PHOTO STUDIO',
-    width / 2,
-    y + brandH / 2
-  );
-
+  ctx.fillText('FRAME PHOTO STUDIO', width / 2, y + brandH / 2);
   y += brandH;
 
   // SONG CREDIT
   if (selectedSongName) {
     ctx.fillStyle = colors.sub;
-    ctx.font = 'italic 20px Arial';
+    ctx.font = 'italic 22px "DM Sans", Arial, sans-serif';
     ctx.letterSpacing = '1px';
-
-    ctx.fillText(
-      `♫ ${selectedSongName}`,
-      width / 2,
-      y + songH / 2,
-      width - 100
-    );
+    ctx.fillText(`♫ ${selectedSongName}`, width / 2, y + songH / 2, width - 100);
   }
 
   return canvas;
 }
 
 // --------------------------------------------------
-// EXPORT PNG OR JPEG
+// EXPORT PNG, JPEG, PDF
 // --------------------------------------------------
 
 async function exportImage(type) {
-  if (!photos.length) {
+  if (!getFilledCount()) {
     alert('Please add at least one photo before exporting.');
     return;
   }
 
   try {
     const canvas = await createExportCanvas();
-
-    const mime = type === 'jpeg'
-      ? 'image/jpeg'
-      : 'image/png';
-
+    const mime = type === 'jpeg' ? 'image/jpeg' : 'image/png';
     const url = canvas.toDataURL(mime, 0.94);
 
     const link = document.createElement('a');
-
     link.href = url;
-    link.download =
-      `frame-photobooth.${type === 'jpeg' ? 'jpg' : 'png'}`;
-
+    link.download = `frame-photobooth.${type === 'jpeg' ? 'jpg' : 'png'}`;
     link.click();
-
   } catch (error) {
     console.error('Export error:', error);
     alert('Something went wrong while exporting your photo strip.');
   }
 }
 
-document.getElementById('savePng').addEventListener('click', () => {
-  exportImage('png');
-});
+savePngBtn.addEventListener('click', () => exportImage('png'));
+saveJpgBtn.addEventListener('click', () => exportImage('jpeg'));
 
-document.getElementById('saveJpg').addEventListener('click', () => {
-  exportImage('jpeg');
-});
-
-// --------------------------------------------------
-// EXPORT PDF
-// --------------------------------------------------
-
-document.getElementById('savePdf').addEventListener('click', async () => {
-  if (!photos.length) {
+savePdfBtn.addEventListener('click', async () => {
+  if (!getFilledCount()) {
     alert('Please add at least one photo before exporting.');
     return;
   }
@@ -870,7 +811,6 @@ document.getElementById('savePdf').addEventListener('click', async () => {
   try {
     const canvas = await createExportCanvas();
     const dataUrl = canvas.toDataURL('image/png');
-
     const printWindow = window.open('', '_blank');
 
     if (!printWindow) {
@@ -884,29 +824,23 @@ document.getElementById('savePdf').addEventListener('click', async () => {
       <head>
         <title>FRAME Photostrip</title>
         <style>
-          @page {
-            size: 4in 6in;
-            margin: 0;
-          }
-
-          * {
-            box-sizing: border-box;
-          }
-
+          @page { size: 4in 6in; margin: 0; }
+          * { box-sizing: border-box; }
           html, body {
             margin: 0;
             padding: 0;
             width: 100%;
             height: 100%;
+            display: grid;
+            place-items: center;
+            background: #ffffff;
           }
-
           img {
             display: block;
-            width: 100%;
-            height: 100%;
+            max-width: 100%;
+            max-height: 100%;
             object-fit: contain;
           }
-
           @media print {
             body {
               print-color-adjust: exact;
@@ -915,10 +849,8 @@ document.getElementById('savePdf').addEventListener('click', async () => {
           }
         </style>
       </head>
-
       <body>
         <img src="${dataUrl}" alt="Photostrip">
-
         <script>
           window.onload = () => {
             setTimeout(() => window.print(), 250);
@@ -929,7 +861,6 @@ document.getElementById('savePdf').addEventListener('click', async () => {
     `);
 
     printWindow.document.close();
-
   } catch (error) {
     console.error('PDF export error:', error);
     alert('Something went wrong while preparing your PDF.');
@@ -937,44 +868,30 @@ document.getElementById('savePdf').addEventListener('click', async () => {
 });
 
 // --------------------------------------------------
-// UPDATE PHOTO POSITIONS WHEN THE WINDOW RESIZES
+// RESIZE, CLEANUP & INIT
 // --------------------------------------------------
 
 window.addEventListener('resize', () => {
-  photos.forEach((photo, index) => {
-    updatePhotoSlot(index);
-  });
+  for (let i = 0; i < layoutCount; i++) {
+    updatePhotoSlot(i);
+  }
 });
-
-// --------------------------------------------------
-// CLEANUP
-// --------------------------------------------------
 
 window.addEventListener('beforeunload', () => {
   if (cameraStream) {
     cameraStream.getTracks().forEach(track => track.stop());
   }
-
   if (audioUrl) {
     URL.revokeObjectURL(audioUrl);
   }
 });
 
-// --------------------------------------------------
-// SET DEFAULT DATE
-// --------------------------------------------------
-
-document.getElementById('dateInput').value =
-  new Date()
-    .toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    })
-    .toUpperCase();
-
-// --------------------------------------------------
-// INITIAL RENDER
-// --------------------------------------------------
+dateInput.value = new Date()
+  .toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  })
+  .toUpperCase();
 
 render();
