@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#f7e9e8">
   <title>FRAME — Korean Photobooth</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -23,7 +23,7 @@
     <section class="intro">
       <p class="eyebrow">A LITTLE MOMENT, FOREVER</p>
       <h1>Make it a <em>memory.</em></h1>
-      <p class="subheading">Create your own Korean-inspired photo strip. Pick your frames, add a song, and keep the moment.</p>
+      <p class="subheading">Create your own Korean-inspired photo strip. Pick your frames, add a filter, and keep the moment.</p>
     </section>
 
     <div class="workspace">
@@ -44,8 +44,12 @@
             <button type="button" class="button button-light" id="takePhoto" disabled>Capture</button>
           </div>
           <div class="camera-wrap" id="cameraWrap" hidden>
-            <video id="camera" autoplay playsinline muted></video>
-            <div class="camera-hint">Position yourself and press Capture</div>
+            <div class="camera-stage" id="cameraStage">
+              <video id="camera" class="mirrored" autoplay playsinline muted></video>
+              <div class="camera-countdown" id="cameraCountdown" aria-live="polite" hidden></div>
+              <button type="button" class="camera-flip-btn" id="flipCamera" aria-label="Switch camera">⇄ Flip</button>
+            </div>
+            <div class="camera-hint" id="cameraHint">Position yourself and press Capture (3s timer)</div>
           </div>
           <div class="photo-status-row">
             <div class="photo-status" id="photoStatus">0 photos added · Add up to 6 photos</div>
@@ -59,29 +63,29 @@
             <span class="step">02</span>
             <div>
               <h2>Choose your strip</h2>
-              <p>Pick a layout for your story.</p>
+              <p>Standard 2×6 strip &amp; 4R print layouts.</p>
             </div>
           </div>
           <div class="choice-grid layout-choices">
             <button type="button" class="choice active" data-layout="4">
               <span class="mini-strip four"><i></i><i></i><i></i><i></i></span>
               <b>4 CUT</b>
-              <small>Classic</small>
+              <small>Classic · 2×6 in</small>
             </button>
             <button type="button" class="choice" data-layout="2">
               <span class="mini-strip two"><i></i><i></i></span>
               <b>2 CUT</b>
-              <small>Simple</small>
+              <small>Portrait · 2×6 in</small>
             </button>
             <button type="button" class="choice" data-layout="3">
               <span class="mini-strip three"><i></i><i></i><i></i></span>
               <b>3 CUT</b>
-              <small>Moments</small>
+              <small>Square · 2×6 in</small>
             </button>
             <button type="button" class="choice" data-layout="6">
               <span class="mini-strip six"><i></i><i></i><i></i><i></i><i></i><i></i></span>
               <b>6 CUT</b>
-              <small>Story</small>
+              <small>Grid · 4×6 in (4R)</small>
             </button>
           </div>
         </section>
@@ -91,9 +95,13 @@
             <span class="step">03</span>
             <div>
               <h2>Style your strip</h2>
-              <p>Make it feel like you.</p>
+              <p>Pick a photo filter, frame theme, and caption.</p>
             </div>
           </div>
+
+          <label class="field-label">Photo filter</label>
+          <div class="filter-grid" id="filterGrid" role="group" aria-label="Photo filters"></div>
+
           <label class="field-label" for="themeSelect">Frame theme</label>
           <select id="themeSelect" class="select">
             <option value="pink">Seoul Blush</option>
@@ -102,8 +110,10 @@
             <option value="lavender">Lavender Dream</option>
             <option value="mint">Soft Mint</option>
           </select>
+
           <label class="field-label" for="captionInput">Your caption</label>
           <input id="captionInput" class="text-input" maxlength="32" value="a day to remember" placeholder="Write a little note">
+
           <label class="field-label" for="dateInput">Date on your strip</label>
           <input id="dateInput" class="text-input" type="text" maxlength="24">
         </section>
@@ -133,29 +143,45 @@
             <p class="eyebrow">LIVE PREVIEW</p>
             <h2>Your photobooth strip</h2>
           </div>
-          <span class="preview-tag">✦ MADE BY YOU</span>
+          <span class="preview-tag" id="previewSizeTag">2 × 6 IN · 600 DPI</span>
         </div>
 
         <div class="stage">
           <div class="strip theme-pink layout-4" id="strip">
             <div class="strip-photos" id="stripPhotos"></div>
-            <div class="strip-caption" id="stripCaption">a day to remember</div>
-            <div class="strip-date" id="stripDate"></div>
-            <div class="strip-brand">FRAME PHOTO STUDIO</div>
-            <div class="strip-song" id="stripSong" hidden></div>
+            <div class="strip-footer">
+              <div class="strip-caption" id="stripCaption">a day to remember</div>
+              <div class="strip-date" id="stripDate"></div>
+              <div class="strip-brand">FRAME PHOTO STUDIO</div>
+              <div class="strip-song" id="stripSong" hidden></div>
+            </div>
           </div>
-          <p class="stage-tip">Drag photos to reposition · Use + / − to zoom</p>
+          <p class="stage-tip">Drag photos to reposition · Tap + / − to zoom</p>
         </div>
 
         <div class="export-panel">
-          <div>
-            <h3>Ready to keep this moment?</h3>
-            <p>Download a high-quality copy of your creation.</p>
+          <div class="export-top">
+            <div>
+              <h3>Ready to keep or print?</h3>
+              <p id="exportSizeSpec">Output: 2 × 6 in (1200 × 3600 px · 600 DPI)</p>
+            </div>
           </div>
+
+          <div class="export-mode" role="group" aria-label="Export format">
+            <button type="button" class="mode-btn active" data-export-mode="single">
+              <b>Single Copy</b>
+              <small>Best for sending digitally</small>
+            </button>
+            <button type="button" class="mode-btn" data-export-mode="4r">
+              <b>4R Print Sheet (4×6 in)</b>
+              <small id="mode4rSub">2 strips side-by-side + cut line</small>
+            </button>
+          </div>
+
           <div class="export-buttons">
             <button type="button" class="button button-dark" id="savePng" disabled>↓ PNG</button>
             <button type="button" class="button button-dark" id="saveJpg" disabled>↓ JPEG</button>
-            <button type="button" class="button button-accent" id="savePdf" disabled>▤ Export PDF</button>
+            <button type="button" class="button button-accent" id="savePdf" disabled>▤ Print / PDF</button>
           </div>
           <p class="export-hint" id="exportHint">Add at least one photo to enable exporting. Empty frames will remain as placeholders.</p>
         </div>
